@@ -1,0 +1,63 @@
+# ============================================================
+# Python
+# ============================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# ============================================================
+# Virtual environments
+# ============================================================
+venv/
+.venv/
+env/
+.conda/
+conda-env/
+
+# ============================================================
+# Data (large files — not tracked, see README for download)
+# ============================================================
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+data/graphs/*
+!data/graphs/.gitkeep
+
+# ============================================================
+# Models / embeddings caches
+# ============================================================
+*.pt
+*.bin
+*.faiss
+*.index
+.cache/
+models/
+
+# ============================================================
+# Reports — keep figures placeholder, ignore generated output
+# ============================================================
+reports/figures/*
+!reports/figures/.gitkeep
+reports/*.html
+
+# ============================================================
+# Environment / secrets
+# ============================================================
+.env
+*.local
+
+# ============================================================
+# OS / IDE
+# ============================================================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

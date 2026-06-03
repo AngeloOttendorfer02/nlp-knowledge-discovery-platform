@@ -1,0 +1,90 @@
+# ============================================================
+# NLP Knowledge Discovery Platform — Central Configuration
+# ============================================================
+# All tunable parameters and paths live here so that notebooks
+# and modules read a single source of truth. Load with PyYAML:
+#
+#     import yaml
+#     with open("config.yaml") as f:
+#         config = yaml.safe_load(f)
+# ============================================================
+
+project:
+  name: "NLP Knowledge Discovery Platform"
+  seed: 42                      # global random seed for reproducibility
+
+# ------------------------------------------------------------
+# Filesystem paths (relative to the repository root)
+# ------------------------------------------------------------
+paths:
+  data_raw: "data/raw"
+  data_processed: "data/processed"
+  data_graphs: "data/graphs"
+  reports: "reports"
+  figures: "reports/figures"
+
+# ------------------------------------------------------------
+# Dataset settings (arXiv scientific papers)
+# ------------------------------------------------------------
+dataset:
+  name: "arxiv"
+  # Columns expected in the raw arXiv metadata file
+  text_columns: ["title", "abstract"]
+  metadata_columns: ["authors", "categories", "update_date"]
+  # Computer-Science categories we focus on
+  categories: ["cs.AI", "cs.LG", "cs.CL", "cs.IR"]
+  sample_size: 5000             # number of papers to load for experiments
+
+# ------------------------------------------------------------
+# Text preprocessing
+# ------------------------------------------------------------
+preprocessing:
+  spacy_model: "en_core_web_sm"
+  lowercase: true
+  remove_stopwords: true
+  lemmatize: true
+  min_token_length: 3
+  chunk_size: 512               # tokens per chunk for long documents
+
+# ------------------------------------------------------------
+# Information extraction
+# ------------------------------------------------------------
+extraction:
+  spacy_model: "en_core_web_sm"
+  # Scientific entity types we keep from spaCy NER
+  entity_types: ["ORG", "PERSON", "GPE", "PRODUCT", "WORK_OF_ART"]
+  keyword_top_n: 10             # keywords per document
+  relation_window: 1            # sentence window for co-occurrence relations
+
+# ------------------------------------------------------------
+# Retrieval
+# ------------------------------------------------------------
+retrieval:
+  embedding_model: "all-MiniLM-L6-v2"
+  top_k: 10                     # number of documents returned per query
+  bm25_k1: 1.5                  # BM25 term-frequency saturation
+  bm25_b: 0.75                  # BM25 length-normalisation
+
+# ------------------------------------------------------------
+# Knowledge graph
+# ------------------------------------------------------------
+knowledge_graph:
+  min_edge_weight: 1            # drop edges weaker than this
+  max_nodes_visualize: 150      # cap nodes in interactive visualisation
+
+# ------------------------------------------------------------
+# Topic modeling
+# ------------------------------------------------------------
+topic_modeling:
+  num_topics: 10
+  lda_passes: 10
+  lda_iterations: 50
+  bertopic_min_topic_size: 15
+
+# ------------------------------------------------------------
+# Embeddings & semantic networks
+# ------------------------------------------------------------
+embeddings:
+  model: "all-MiniLM-L6-v2"
+  batch_size: 32
+  similarity_threshold: 0.5     # minimum cosine similarity for a network edge
