@@ -1,0 +1,450 @@
+# prepare_and_install_dep.txt
+# NLP Knowledge Discovery Platform - Prepare, Install and Smoke-Test
+#
+# Purpose:
+# This file contains the full setup sequence used to prepare the project
+# on Linux with Miniforge/Conda and Python 3.11.
+#
+# Recommended platform:
+# - Linux
+# - Python 3.11 via Conda/Miniforge
+#
+# Important:
+# Do NOT use Python 3.14 for this project. Several NLP/ML packages may fail.
+# Use Python 3.11.
+
+###############################################################################
+# 0. Go to the project root
+###############################################################################
+
+cd /media/dorin/Disk/Git/nlp-knowledge-discovery-platform
+
+
+###############################################################################
+# 1. Install Miniforge if conda is not available
+###############################################################################
+
+# Check whether conda exists:
+conda --version
+
+# If the command above fails with "conda: command not found", install Miniforge:
+cd ~
+wget -O Miniforge3.sh https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
+bash Miniforge3.sh
+
+# During the installer:
+# - press ENTER to continue
+# - type: yes
+# - accept the default install path, usually: /home/<user>/miniforge3
+# - when asked to initialize the shell, type: yes
+
+# After installation, either close and reopen the terminal, or run:
+source ~/miniforge3/etc/profile.d/conda.sh
+
+# Verify:
+conda --version
+
+
+###############################################################################
+# 2. Create and activate the project environment with Python 3.11
+###############################################################################
+
+cd /media/dorin/Disk/Git/nlp-knowledge-discovery-platform
+
+# Optional: remove an old broken environment with the same name.
+# Run this only if you want a clean reinstall:
+conda env remove -n nlp-kg -y
+
+# Create a clean Python 3.11 environment:
+conda create -n nlp-kg python=3.11 -y
+
+# Activate it:
+conda activate nlp-kg
+
+# Verify that Python 3.11 is active:
+python --version
+
+# Expected output:
+# Python 3.11.x
+
+
+###############################################################################
+# 3. Patch Windows-only packages in requirements.txt
+###############################################################################
+
+# Some generated requirements files may contain Windows-only packages such as
+# pywinpty without platform markers. On Linux this can break the installation.
+# This patch is safe and idempotent: it only adds Windows platform markers.
+
+cd /media/dorin/Disk/Git/nlp-knowledge-discovery-platform
+
+# Check if pywin packages exist:
+grep -n "pywin" requirements.txt || true
+
+# Patch pywin packages so that Linux ignores them:
+python - <<'PY'
+from pathlib import Path
+
+path = Path("requirements.txt")
+lines = path.read_text(encoding="utf-8").splitlines()
+
+fixed = []
+for line in lines:
+    stripped = line.strip()
+
+    if stripped.startswith("pywinpty"):
+        if "sys_platform" not in stripped:
+            fixed.append(f"{stripped}; sys_platform == 'win32'")
+        else:
+            fixed.append(line)
+    elif stripped.startswith("pywin32"):
+        if "sys_platform" not in stripped:
+            fixed.append(f"{stripped}; sys_platform == 'win32'")
+        else:
+            fixed.append(line)
+    elif stripped.startswith("pypiwin32"):
+        if "sys_platform" not in stripped:
+            fixed.append(f"{stripped}; sys_platform == 'win32'")
+        else:
+            fixed.append(line)
+    else:
+        fixed.append(line)
+
+path.write_text("\n".join(fixed) + "\n", encoding="utf-8")
+print("requirements.txt patched for Windows-only pywin packages.")
+PY
+
+# Verify the result:
+grep -n "pywin" requirements.txt || true
+
+# Expected on Linux:
+# pywinpty==...; sys_platform == 'win32'
+
+
+###############################################################################
+# 4. Install Python dependencies
+###############################################################################
+
+# Make sure the correct environment is active:
+conda activate nlp-kg
+python --version
+
+# Upgrade packaging tools:
+python -m pip install --upgrade pip setuptools wheel
+
+# Install all project dependencies and write the log to install.log:
+pip install -r requirements.txt 2>&1 | tee install.log
+
+# If installation fails, inspect the last lines:
+tail -n 100 install.log
+
+
+###############################################################################
+# 5. Install the spaCy English model
+###############################################################################
+
+conda activate nlp-kg
+python -m spacy download en_core_web_sm
+
+# Optional verification:
+python - <<'PY'
+import spacy
+nlp = spacy.load("en_core_web_sm")
+doc = nlp("Knowledge graphs and semantic retrieval are useful for scientific papers.")
+print([(ent.text, ent.label_) for ent in doc.ents])
+print("spaCy model loaded successfully.")
+PY
+
+
+###############################################################################
+# 6. Create required project directories
+###############################################################################
+
+cd /media/dorin/Disk/Git/nlp-knowledge-discovery-platform
+
+mkdir -p data/raw data/processed data/graphs reports/figures
+
+touch data/raw/.gitkeep
+touch data/processed/.gitkeep
+touch data/graphs/.gitkeep
+touch reports/.gitkeep
+touch reports/figures/.gitkeep
+
+
+###############################################################################
+# 7. Basic syntax check
+###############################################################################
+
+conda activate nlp-kg
+cd /media/dorin/Disk/Git/nlp-knowledge-discovery-platform
+
+python -m compileall src
+
+
+###############################################################################
+# 8. Import smoke test
+###############################################################################
+
+conda activate nlp-kg
+cd /media/dorin/Disk/Git/nlp-knowledge-discovery-platform
+
+python - <<'PY'
+modules = [
+    "src.preprocessing.document_loader",
+    "src.preprocessing.text_cleaning",
+    "src.retrieval.bm25_retriever",
+    "src.retrieval.vector_store",
+    "src.retrieval.embedding_retriever",
+    "src.extraction.entity_extraction",
+    "src.extraction.keyword_extraction",
+    "src.extraction.relation_extraction",
+    "src.knowledge_graph.graph_builder",
+    "src.knowledge_graph.graph_queries",
+    "src.knowledge_graph.graph_visualization",
+    "src.embeddings.sentence_embeddings",
+    "src.embeddings.network_embeddings",
+    "src.topic_modeling.lda_model",
+    "src.topic_modeling.bertopic_model",
+]
+
+for module in modules:
+    __import__(module)
+    print("OK:", module)
+
+print("All imports passed.")
+PY
+
+
+###############################################################################
+# 9. Minimal end-to-end smoke test with tiny local data
+###############################################################################
+
+# This creates a tiny synthetic arXiv-like JSONL file and tests:
+# - document loading
+# - text cleaning
+# - BM25 retrieval
+# - entity extraction
+# - relation extraction
+# - knowledge graph construction
+# - graph export to JSON and GraphML
+
+conda activate nlp-kg
+cd /media/dorin/Disk/Git/nlp-knowledge-discovery-platform
+
+python - <<'PY'
+from pathlib import Path
+import json
+
+from src.preprocessing.document_loader import load_arxiv_jsonl, dataframe_to_documents
+from src.preprocessing.text_cleaning import clean_text, chunk_text
+from src.retrieval.bm25_retriever import BM25Retriever
+from src.extraction.entity_extraction import EntityExtractor
+from src.extraction.relation_extraction import CooccurrenceRelationExtractor
+from src.knowledge_graph.graph_builder import KnowledgeGraphBuilder
+
+Path("data/raw").mkdir(parents=True, exist_ok=True)
+Path("data/graphs").mkdir(parents=True, exist_ok=True)
+
+sample_path = Path("data/raw/tiny_arxiv.jsonl")
+
+records = [
+    {
+        "id": "001",
+        "title": "Graph Neural Networks for Scientific Document Retrieval",
+        "abstract": "We study graph neural networks and semantic retrieval for scientific papers.",
+        "authors": "Alice Smith, Bob Miller",
+        "categories": "cs.AI cs.IR",
+        "update_date": "2026-01-01",
+    },
+    {
+        "id": "002",
+        "title": "Transformer Models for Information Extraction",
+        "abstract": "BERT and transformer models are used for named entity recognition and relation extraction.",
+        "authors": "Carol Jones",
+        "categories": "cs.CL",
+        "update_date": "2026-01-02",
+    },
+    {
+        "id": "003",
+        "title": "Medical Image Segmentation",
+        "abstract": "This paper studies convolutional neural networks for image segmentation.",
+        "authors": "David Brown",
+        "categories": "cs.CV",
+        "update_date": "2026-01-03",
+    },
+]
+
+with sample_path.open("w", encoding="utf-8") as f:
+    for record in records:
+        f.write(json.dumps(record) + "\n")
+
+df = load_arxiv_jsonl(
+    str(sample_path),
+    categories=["cs.AI", "cs.CL", "cs.IR"],
+    sample_size=None,
+)
+
+print("Loaded documents:")
+print(df[["doc_id", "title", "categories"]])
+
+documents = dataframe_to_documents(df)
+texts = [doc.text for doc in documents]
+doc_ids = [doc.doc_id for doc in documents]
+
+print("\nClean text example:")
+print(clean_text(texts[0]))
+
+print("\nChunk example:")
+print(chunk_text(["a", "b", "c", "d", "e"], chunk_size=2))
+
+retriever = BM25Retriever(tokenizer=lambda text: text.lower().split())
+retriever.index(doc_ids, texts)
+
+results = retriever.search("transformer information extraction", top_k=2)
+
+print("\nBM25 results:")
+for result in results:
+    print(result.rank, result.doc_id, round(result.score, 4), result.text[:80])
+
+entity_extractor = EntityExtractor(entity_types=["ORG", "PERSON", "GPE", "PRODUCT", "WORK_OF_ART"])
+entities_per_doc = entity_extractor.extract_batch(texts)
+
+print("\nEntities:")
+for doc_id, entities in zip(doc_ids, entities_per_doc):
+    print(doc_id, [(e.text, e.label) for e in entities])
+
+relation_extractor = CooccurrenceRelationExtractor()
+kg = KnowledgeGraphBuilder()
+
+for doc, entities in zip(documents, entities_per_doc):
+    kg.add_paper(
+        doc_id=doc.doc_id,
+        title=doc.title,
+        authors=doc.authors,
+        categories=doc.categories,
+    )
+    kg.add_entities(doc.doc_id, entities)
+    kg.add_relations(relation_extractor.extract(doc.text, entities))
+
+print("\nKG stats:")
+print(kg.stats())
+
+kg.save_json("data/graphs/tiny_graph.json")
+kg.save_graphml("data/graphs/tiny_graph.graphml")
+
+print("\nEnd-to-end smoke test passed.")
+PY
+
+
+###############################################################################
+# 10. Optional semantic retrieval smoke test
+###############################################################################
+
+# This test may download a Sentence Transformers model the first time it runs.
+# It verifies that embedding-based retrieval works.
+
+conda activate nlp-kg
+cd /media/dorin/Disk/Git/nlp-knowledge-discovery-platform
+
+python - <<'PY'
+from src.retrieval.embedding_retriever import EmbeddingRetriever
+
+doc_ids = ["001", "002", "003"]
+texts = [
+    "Graph neural networks for scientific document retrieval.",
+    "Transformer models for named entity recognition and relation extraction.",
+    "Medical image segmentation using convolutional networks.",
+]
+
+retriever = EmbeddingRetriever(model_name="all-MiniLM-L6-v2")
+retriever.index(doc_ids, texts)
+
+results = retriever.search("semantic search for scientific papers", top_k=2)
+
+for r in results:
+    print(r.rank, r.doc_id, round(r.score, 4), r.text)
+
+print("Embedding retrieval smoke test passed.")
+PY
+
+
+###############################################################################
+# 11. Optional dependency consistency check
+###############################################################################
+
+conda activate nlp-kg
+cd /media/dorin/Disk/Git/nlp-knowledge-discovery-platform
+
+python -m pip check
+
+
+###############################################################################
+# 12. Optional Jupyter kernel registration
+###############################################################################
+
+# Use this if notebooks are used and you want the environment visible in Jupyter.
+
+conda activate nlp-kg
+python -m ipykernel install --user --name nlp-kg --display-name "Python (nlp-kg)"
+
+
+###############################################################################
+# 13. Git commands after setup files were added or changed
+###############################################################################
+
+cd /media/dorin/Disk/Git/nlp-knowledge-discovery-platform
+
+git status
+
+# Recommended files to commit if they were newly added or modified:
+git add requirements.txt README.md prepare_and_install_dep.txt \
+        data/raw/.gitkeep data/processed/.gitkeep data/graphs/.gitkeep \
+        reports/.gitkeep reports/figures/.gitkeep
+
+git commit -m "Add reproducible installation and smoke test instructions"
+
+git push
+
+
+###############################################################################
+# 14. Troubleshooting
+###############################################################################
+
+# Problem:
+# pip install fails because of pywinpty on Linux.
+#
+# Solution:
+# Make sure requirements.txt contains:
+# pywinpty==3.0.3; sys_platform == 'win32'
+#
+# Then recreate the environment and reinstall dependencies.
+
+# Problem:
+# The environment accidentally uses Python 3.14.
+#
+# Solution:
+# Do not use the system Python. Use:
+# conda activate nlp-kg
+# python --version
+#
+# Expected:
+# Python 3.11.x
+
+# Problem:
+# conda command not found.
+#
+# Solution:
+# Run:
+# source ~/miniforge3/etc/profile.d/conda.sh
+#
+# Or close and reopen the terminal after Miniforge installation.
+
+# Problem:
+# Installation fails again.
+#
+# Solution:
+# Run:
+# pip install -r requirements.txt 2>&1 | tee install.log
+# tail -n 100 install.log
+#
+# Then inspect the last lines of install.log.

@@ -328,6 +328,418 @@ python -m spacy download en_core_web_sm
 
 ---
 
+# Installation, Reproducibility and Smoke Tests
+
+This section explains how a new developer can clone the repository, install the environment, prepare the required folders, and run basic checks to verify that the current pipeline works.
+
+The commands below are intended to be run from the repository root.
+
+---
+
+## Recommended Python Version
+
+Use **Python 3.10 or Python 3.11** for best compatibility with the NLP ecosystem.
+
+Avoid very new Python versions such as Python 3.13 or Python 3.14 unless all dependencies have been verified manually, because some NLP and ML packages may not provide stable wheels for the newest Python versions yet.
+
+Check your Python version:
+
+```bash
+python3 --version
+```
+
+---
+
+## Option A — Setup with Python venv
+
+```bash
+git clone https://github.com/AngeloOttendorfer02/nlp-knowledge-discovery-platform.git
+cd nlp-knowledge-discovery-platform
+
+python3 -m venv venv
+source venv/bin/activate
+
+pip install --upgrade pip
+pip install -r requirements.txt
+python -m spacy download en_core_web_sm
+```
+
+---
+
+## Option B — Setup with Conda
+
+```bash
+git clone https://github.com/AngeloOttendorfer02/nlp-knowledge-discovery-platform.git
+cd nlp-knowledge-discovery-platform
+
+conda create -n nlp-kg python=3.10
+conda activate nlp-kg
+
+pip install --upgrade pip
+pip install -r requirements.txt
+python -m spacy download en_core_web_sm
+```
+
+---
+
+## Required Data and Output Folders
+
+The repository expects the following folders to exist:
+
+```bash
+mkdir -p data/raw data/processed data/graphs reports/figures
+
+touch data/raw/.gitkeep \
+      data/processed/.gitkeep \
+      data/graphs/.gitkeep \
+      reports/.gitkeep \
+      reports/figures/.gitkeep
+```
+
+Purpose of these folders:
+
+- `data/raw/` — original input data, for example arXiv metadata or small test files.
+- `data/processed/` — cleaned or transformed intermediate data.
+- `data/graphs/` — exported knowledge graphs, for example JSON or GraphML files.
+- `reports/figures/` — plots and visualizations generated during experiments.
+
+Large datasets should not be committed directly unless explicitly agreed by the team. If the dataset is too large, document the download source and expected file path.
+
+---
+
+## Source Code Syntax Check
+
+Run this first to verify that all Python files compile:
+
+```bash
+python -m compileall src
+```
+
+Expected result: no Python syntax errors.
+
+---
+
+## Import Smoke Test
+
+This verifies that the implemented modules can be imported successfully.
+
+```bash
+python - <<'PY'
+modules = [
+    "src.preprocessing.document_loader",
+    "src.preprocessing.text_cleaning",
+    "src.retrieval.bm25_retriever",
+    "src.retrieval.vector_store",
+    "src.retrieval.embedding_retriever",
+    "src.extraction.entity_extraction",
+    "src.extraction.keyword_extraction",
+    "src.extraction.relation_extraction",
+    "src.knowledge_graph.graph_builder",
+    "src.knowledge_graph.graph_queries",
+    "src.knowledge_graph.graph_visualization",
+    "src.embeddings.sentence_embeddings",
+    "src.embeddings.network_embeddings",
+    "src.topic_modeling.lda_model",
+    "src.topic_modeling.bertopic_model",
+]
+
+for module in modules:
+    __import__(module)
+    print("OK:", module)
+
+print("Import smoke test passed.")
+PY
+```
+
+Expected result: every module prints `OK:` and the script ends with `Import smoke test passed.`
+
+---
+
+## Minimal End-to-End Smoke Test
+
+This test creates a tiny artificial arXiv-like JSONL dataset and verifies the current pipeline components:
+
+- JSONL document loading
+- document object conversion
+- text cleaning
+- text chunking
+- BM25 retrieval
+- spaCy entity extraction
+- co-occurrence relation extraction
+- knowledge graph construction
+- graph export to JSON and GraphML
+
+```bash
+python - <<'PY'
+from pathlib import Path
+import json
+
+from src.preprocessing.document_loader import load_arxiv_jsonl, dataframe_to_documents
+from src.preprocessing.text_cleaning import clean_text, chunk_text
+from src.retrieval.bm25_retriever import BM25Retriever
+from src.extraction.entity_extraction import EntityExtractor
+from src.extraction.relation_extraction import CooccurrenceRelationExtractor
+from src.knowledge_graph.graph_builder import KnowledgeGraphBuilder
+
+Path("data/raw").mkdir(parents=True, exist_ok=True)
+Path("data/graphs").mkdir(parents=True, exist_ok=True)
+
+sample_path = Path("data/raw/tiny_arxiv.jsonl")
+
+records = [
+    {
+        "id": "001",
+        "title": "Graph Neural Networks for Scientific Document Retrieval",
+        "abstract": "We study graph neural networks and semantic retrieval for scientific papers.",
+        "authors": "Alice Smith, Bob Miller",
+        "categories": "cs.AI cs.IR",
+        "update_date": "2026-01-01",
+    },
+    {
+        "id": "002",
+        "title": "Transformer Models for Information Extraction",
+        "abstract": "BERT and transformer models are used for named entity recognition and relation extraction.",
+        "authors": "Carol Jones",
+        "categories": "cs.CL",
+        "update_date": "2026-01-02",
+    },
+    {
+        "id": "003",
+        "title": "Medical Image Segmentation",
+        "abstract": "This paper studies convolutional neural networks for image segmentation.",
+        "authors": "David Brown",
+        "categories": "cs.CV",
+        "update_date": "2026-01-03",
+    },
+]
+
+with sample_path.open("w", encoding="utf-8") as f:
+    for record in records:
+        f.write(json.dumps(record) + "\n")
+
+df = load_arxiv_jsonl(
+    str(sample_path),
+    categories=["cs.AI", "cs.CL", "cs.IR"],
+    sample_size=None,
+)
+
+print("Loaded documents:")
+print(df[["doc_id", "title", "categories"]])
+
+documents = dataframe_to_documents(df)
+texts = [doc.text for doc in documents]
+doc_ids = [doc.doc_id for doc in documents]
+
+print("\nClean text example:")
+print(clean_text(texts[0]))
+
+print("\nChunk example:")
+print(chunk_text(["a", "b", "c", "d", "e"], chunk_size=2))
+
+retriever = BM25Retriever(tokenizer=lambda text: text.lower().split())
+retriever.index(doc_ids, texts)
+
+results = retriever.search("transformer information extraction", top_k=2)
+
+print("\nBM25 results:")
+for result in results:
+    print(result.rank, result.doc_id, round(result.score, 4), result.text[:80])
+
+entity_extractor = EntityExtractor(entity_types=["ORG", "PERSON", "GPE", "PRODUCT", "WORK_OF_ART"])
+entities_per_doc = entity_extractor.extract_batch(texts)
+
+print("\nEntities:")
+for doc_id, entities in zip(doc_ids, entities_per_doc):
+    print(doc_id, [(e.text, e.label) for e in entities])
+
+relation_extractor = CooccurrenceRelationExtractor()
+kg = KnowledgeGraphBuilder()
+
+for doc, entities in zip(documents, entities_per_doc):
+    kg.add_paper(
+        doc_id=doc.doc_id,
+        title=doc.title,
+        authors=doc.authors,
+        categories=doc.categories,
+    )
+    kg.add_entities(doc.doc_id, entities)
+    kg.add_relations(relation_extractor.extract(doc.text, entities))
+
+print("\nKG stats:")
+print(kg.stats())
+
+kg.save_json("data/graphs/tiny_graph.json")
+kg.save_graphml("data/graphs/tiny_graph.graphml")
+
+print("\nSmoke test passed.")
+PY
+```
+
+Expected result:
+
+- documents are loaded from the generated JSONL file,
+- BM25 returns ranked search results,
+- entities are extracted with spaCy,
+- a small knowledge graph is built,
+- `data/graphs/tiny_graph.json` is created,
+- `data/graphs/tiny_graph.graphml` is created,
+- the script ends with `Smoke test passed.`
+
+---
+
+## Optional Semantic Retrieval Smoke Test
+
+This test verifies the embedding-based retrieval path.
+
+It may download a Sentence Transformers model on the first run and can take longer than the basic smoke test.
+
+```bash
+python - <<'PY'
+from src.retrieval.embedding_retriever import EmbeddingRetriever
+
+doc_ids = ["001", "002", "003"]
+texts = [
+    "Graph neural networks for scientific document retrieval.",
+    "Transformer models for named entity recognition and relation extraction.",
+    "Medical image segmentation using convolutional networks.",
+]
+
+retriever = EmbeddingRetriever(model_name="all-MiniLM-L6-v2")
+retriever.index(doc_ids, texts)
+
+results = retriever.search("semantic search for scientific papers", top_k=2)
+
+for result in results:
+    print(result.rank, result.doc_id, round(result.score, 4), result.text)
+
+print("Embedding retrieval smoke test passed.")
+PY
+```
+
+If this fails because FAISS is missing, install it with:
+
+```bash
+pip install faiss-cpu
+```
+
+If this fails because Sentence Transformers is missing, install it with:
+
+```bash
+pip install sentence-transformers
+```
+
+Both packages should ideally be listed in `requirements.txt` if this module is part of the active project scope.
+
+---
+
+## Full Quick-Start Checklist
+
+For a fresh clone, run:
+
+```bash
+git clone https://github.com/AngeloOttendorfer02/nlp-knowledge-discovery-platform.git
+cd nlp-knowledge-discovery-platform
+
+python3 -m venv venv
+source venv/bin/activate
+
+pip install --upgrade pip
+pip install -r requirements.txt
+python -m spacy download en_core_web_sm
+
+mkdir -p data/raw data/processed data/graphs reports/figures
+
+touch data/raw/.gitkeep \
+      data/processed/.gitkeep \
+      data/graphs/.gitkeep \
+      reports/.gitkeep \
+      reports/figures/.gitkeep
+
+python -m compileall src
+```
+
+Then run the import smoke test and the minimal end-to-end smoke test from the sections above.
+
+---
+
+## Troubleshooting
+
+### `ModuleNotFoundError: No module named 'pandas'`
+
+Install project dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+### `spaCy model 'en_core_web_sm' is not installed`
+
+Download the model:
+
+```bash
+python -m spacy download en_core_web_sm
+```
+
+### `ModuleNotFoundError: No module named 'rank_bm25'`
+
+Install the BM25 dependency:
+
+```bash
+pip install rank-bm25
+```
+
+### `ModuleNotFoundError: No module named 'faiss'`
+
+Install FAISS CPU:
+
+```bash
+pip install faiss-cpu
+```
+
+### Sentence Transformers model downloads are slow
+
+The first run of embedding retrieval may download `all-MiniLM-L6-v2`. This is normal.
+
+### Problems with Python 3.13 or 3.14
+
+Use Python 3.10 or 3.11 instead:
+
+```bash
+python3.11 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python -m spacy download en_core_web_sm
+```
+
+---
+
+## Current Reproducibility Status
+
+At this stage, the repository contains reusable module implementations for:
+
+- preprocessing,
+- document loading,
+- BM25 retrieval,
+- embedding retrieval,
+- entity extraction,
+- relation extraction,
+- knowledge graph construction,
+- graph querying,
+- graph visualization,
+- topic modeling,
+- semantic embeddings and network embeddings.
+
+The smoke tests above validate that the current codebase can be installed and executed on a fresh environment. They are not yet the final scientific evaluation. The final project will still need:
+
+- real dataset download instructions,
+- complete notebooks,
+- retrieval evaluation queries,
+- comparison of BM25 vs semantic retrieval vs KG-enhanced retrieval,
+- metrics such as Precision@k, Recall@k and MRR,
+- error analysis and interpretation.
+
+---
+
 # Planned Workflow
 
 ## Step 1 — Data Collection
