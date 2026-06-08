@@ -105,3 +105,6 @@ Thumbs.db
 tmp/
 temp/
 *.tmp
+
+# PyVis generated assets
+lib/

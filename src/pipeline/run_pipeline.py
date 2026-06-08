@@ -1,0 +1,542 @@
+"""
+End-to-end NLP Knowledge Discovery Pipeline.
+
+Run from the project root:
+
+    python -m src.pipeline.run_pipeline
+
+Fast first run:
+
+    python -m src.pipeline.run_pipeline --skip-embeddings
+
+Run with the real arXiv Kaggle metadata file:
+
+    python -m src.pipeline.run_pipeline --input data/raw/arxiv-metadata-oai-snapshot.json --skip-embeddings
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+from typing import Any, Dict, Optional
+
+import pandas as pd
+import yaml
+
+from src.extraction.entity_extraction import EntityExtractor
+from src.extraction.keyword_extraction import TfidfKeywordExtractor
+from src.extraction.relation_extraction import (
+    CooccurrenceRelationExtractor,
+    aggregate_relations,
+)
+from src.knowledge_graph.graph_builder import KnowledgeGraphBuilder
+from src.knowledge_graph.graph_visualization import (
+    network_analysis,
+    visualize_interactive,
+)
+from src.preprocessing.document_loader import (
+    dataframe_to_documents,
+    load_arxiv_csv,
+    load_arxiv_jsonl,
+)
+from src.preprocessing.text_cleaning import preprocess, preprocess_to_string
+from src.retrieval.bm25_retriever import BM25Retriever
+from src.topic_modeling.lda_model import LDATopicModel
+
+
+def load_config(path: str = "config.yaml") -> Dict[str, Any]:
+    config_path = Path(path)
+
+    if not config_path.exists():
+        raise FileNotFoundError(f"Config file not found: {config_path}")
+
+    with config_path.open("r", encoding="utf-8") as file:
+        return yaml.safe_load(file)
+
+
+def ensure_directories(config: Dict[str, Any]) -> Dict[str, Path]:
+    paths = config.get("paths", {})
+
+    directories = {
+        "raw": Path(paths.get("data_raw", "data/raw")),
+        "processed": Path(paths.get("data_processed", "data/processed")),
+        "graphs": Path(paths.get("data_graphs", "data/graphs")),
+        "reports": Path(paths.get("reports", "reports")),
+        "figures": Path(paths.get("figures", "reports/figures")),
+    }
+
+    for directory in directories.values():
+        directory.mkdir(parents=True, exist_ok=True)
+
+    return directories
+
+
+def create_sample_dataset(path: Path) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    sample = pd.DataFrame(
+        [
+            {
+                "id": "sample-001",
+                "title": "Knowledge Graphs for Scientific Discovery",
+                "abstract": (
+                    "Knowledge graphs represent entities and relations in scientific literature. "
+                    "They support semantic search, question answering, and explainable AI systems."
+                ),
+                "authors": "Alice Smith, Bob Miller",
+                "categories": "cs.AI cs.CL",
+                "update_date": "2026-01-01",
+            },
+            {
+                "id": "sample-002",
+                "title": "Graph Neural Networks for Link Prediction",
+                "abstract": (
+                    "Graph neural networks learn representations over graph-structured data. "
+                    "They can predict missing links and classify nodes in citation networks."
+                ),
+                "authors": "Carla Brown",
+                "categories": "cs.LG cs.AI",
+                "update_date": "2026-01-02",
+            },
+            {
+                "id": "sample-003",
+                "title": "Bias Analysis in Language Model Embeddings",
+                "abstract": (
+                    "Large language models and embedding spaces may contain social bias. "
+                    "Bias evaluation and debiasing methods are important for responsible NLP."
+                ),
+                "authors": "David Wilson",
+                "categories": "cs.CL",
+                "update_date": "2026-01-03",
+            },
+            {
+                "id": "sample-004",
+                "title": "Topic Modeling for Research Trend Analysis",
+                "abstract": (
+                    "Topic modeling discovers hidden themes in scientific document collections. "
+                    "LDA and transformer-based methods can support literature review workflows."
+                ),
+                "authors": "Eva Johnson",
+                "categories": "cs.IR cs.CL",
+                "update_date": "2026-01-04",
+            },
+            {
+                "id": "sample-005",
+                "title": "Retrieval Augmented Generation with Structured Knowledge",
+                "abstract": (
+                    "Retrieval augmented generation combines external knowledge retrieval with "
+                    "language generation. Knowledge graphs can provide structured evidence."
+                ),
+                "authors": "Frank Davis",
+                "categories": "cs.AI cs.IR",
+                "update_date": "2026-01-05",
+            },
+        ]
+    )
+
+    sample.to_csv(path, index=False)
+    return path
+
+
+def find_input_file(raw_dir: Path) -> Optional[Path]:
+    for pattern in ["*.csv", "*.jsonl", "*.json"]:
+        matches = sorted(raw_dir.glob(pattern))
+        if matches:
+            return matches[0]
+
+    return None
+
+
+def load_documents(input_path: Optional[str], config: Dict[str, Any], raw_dir: Path):
+    dataset_cfg = config.get("dataset", {})
+    sample_size = dataset_cfg.get("sample_size")
+    categories = dataset_cfg.get("categories")
+    seed = config.get("project", {}).get("seed", 42)
+
+    if input_path:
+        path = Path(input_path)
+    else:
+        path = find_input_file(raw_dir)
+
+        if path is None:
+            path = create_sample_dataset(raw_dir / "sample_documents.csv")
+            print(f"No raw dataset found. Created sample dataset at: {path}")
+
+    if not path.exists():
+        raise FileNotFoundError(f"Input file does not exist: {path}")
+
+    suffix = path.suffix.lower()
+
+    if suffix == ".csv":
+        df = load_arxiv_csv(
+            str(path),
+            sample_size=sample_size,
+            categories=categories,
+            seed=seed,
+        )
+    elif suffix in {".jsonl", ".json"}:
+        df = load_arxiv_jsonl(
+            str(path),
+            sample_size=sample_size,
+            categories=categories,
+            seed=seed,
+        )
+    else:
+        raise ValueError(f"Unsupported input format: {path.suffix}")
+
+    documents = dataframe_to_documents(df)
+    return documents, path
+
+
+def documents_to_dataframe(documents) -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "doc_id": doc.doc_id,
+                "title": doc.title,
+                "abstract": doc.abstract,
+                "authors": doc.authors,
+                "categories": doc.categories,
+                "date": doc.date,
+                "text": doc.text,
+            }
+            for doc in documents
+        ]
+    )
+
+
+def save_json(data: Any, path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def run_pipeline(
+    input_path: Optional[str] = None,
+    query: str = "knowledge graphs and language models",
+    skip_embeddings: bool = False,
+) -> None:
+    print("Starting NLP Knowledge Discovery Pipeline...")
+
+    config = load_config()
+    directories = ensure_directories(config)
+
+    print("Loading documents...")
+    documents, used_input_path = load_documents(input_path, config, directories["raw"])
+    print(f"Loaded {len(documents)} documents from {used_input_path}")
+
+    if not documents:
+        raise RuntimeError("No documents loaded. Add a CSV, JSON, or JSONL file to data/raw.")
+
+    df = documents_to_dataframe(documents)
+
+    texts = df["text"].fillna("").tolist()
+    doc_ids = df["doc_id"].astype(str).tolist()
+
+    print("Preprocessing text...")
+    preprocessing_cfg = config.get("preprocessing", {})
+
+    tokenized_docs = [
+        preprocess(
+            text,
+            spacy_model=preprocessing_cfg.get("spacy_model", "en_core_web_sm"),
+            remove_stopwords=preprocessing_cfg.get("remove_stopwords", True),
+            lemmatize=preprocessing_cfg.get("lemmatize", True),
+            min_token_length=preprocessing_cfg.get("min_token_length", 3),
+        )
+        for text in texts
+    ]
+
+    cleaned_texts = [
+        preprocess_to_string(
+            text,
+            spacy_model=preprocessing_cfg.get("spacy_model", "en_core_web_sm"),
+            remove_stopwords=preprocessing_cfg.get("remove_stopwords", True),
+            lemmatize=preprocessing_cfg.get("lemmatize", True),
+            min_token_length=preprocessing_cfg.get("min_token_length", 3),
+        )
+        for text in texts
+    ]
+
+    df["cleaned_text"] = cleaned_texts
+    df["tokens"] = [" ".join(tokens) for tokens in tokenized_docs]
+
+    processed_path = directories["processed"] / "processed_documents.csv"
+    df.to_csv(processed_path, index=False)
+    print(f"Saved processed documents to {processed_path}")
+
+    print("Extracting entities...")
+    extraction_cfg = config.get("extraction", {})
+
+    entity_extractor = EntityExtractor(
+        spacy_model=extraction_cfg.get("spacy_model", "en_core_web_sm"),
+        entity_types=extraction_cfg.get("entity_types"),
+    )
+
+    doc_entities = entity_extractor.extract_batch(texts)
+
+    entities_output = []
+
+    for doc_id, entities in zip(doc_ids, doc_entities):
+        for entity in entities:
+            entities_output.append(
+                {
+                    "doc_id": doc_id,
+                    "text": entity.text,
+                    "label": entity.label,
+                    "start": entity.start,
+                    "end": entity.end,
+                }
+            )
+
+    entities_path = directories["processed"] / "entities.csv"
+    pd.DataFrame(entities_output).to_csv(entities_path, index=False)
+    print(f"Saved extracted entities to {entities_path}")
+
+    print("Extracting keywords...")
+
+    keyword_extractor = TfidfKeywordExtractor(
+        top_n=extraction_cfg.get("keyword_top_n", 10)
+    )
+    keyword_extractor.fit(cleaned_texts)
+
+    keywords_output = []
+
+    for index, doc_id in enumerate(doc_ids):
+        for keyword, score in keyword_extractor.get_keywords(index):
+            keywords_output.append(
+                {
+                    "doc_id": doc_id,
+                    "keyword": keyword,
+                    "score": score,
+                }
+            )
+
+    keywords_path = directories["processed"] / "keywords.csv"
+    pd.DataFrame(keywords_output).to_csv(keywords_path, index=False)
+    print(f"Saved extracted keywords to {keywords_path}")
+
+    print("Extracting co-occurrence relations...")
+
+    relation_extractor = CooccurrenceRelationExtractor(
+        spacy_model=extraction_cfg.get("spacy_model", "en_core_web_sm"),
+        window=extraction_cfg.get("relation_window", 1),
+    )
+
+    all_relations = []
+    relations_output = []
+
+    for doc_id, text, entities in zip(doc_ids, texts, doc_entities):
+        relations = relation_extractor.extract(text, entities)
+        all_relations.extend(relations)
+
+        for relation in relations:
+            relations_output.append(
+                {
+                    "doc_id": doc_id,
+                    "source": relation.source,
+                    "relation": relation.relation,
+                    "target": relation.target,
+                    "weight": relation.weight,
+                }
+            )
+
+    aggregated_relations = aggregate_relations(all_relations)
+
+    relations_path = directories["processed"] / "relations.csv"
+    pd.DataFrame(relations_output).to_csv(relations_path, index=False)
+    print(f"Saved extracted relations to {relations_path}")
+
+    print("Building knowledge graph...")
+    kg_cfg = config.get("knowledge_graph", {})
+
+    graph_builder = KnowledgeGraphBuilder(
+        min_edge_weight=kg_cfg.get("min_edge_weight", 1),
+    )
+
+    for doc, entities in zip(documents, doc_entities):
+        graph_builder.add_paper(
+            doc_id=doc.doc_id,
+            title=doc.title,
+            authors=doc.authors,
+            categories=doc.categories,
+        )
+        graph_builder.add_entities(doc.doc_id, entities)
+
+    graph_builder.add_relations(aggregated_relations)
+    graph_builder.prune()
+
+    graphml_path = directories["graphs"] / "knowledge_graph.graphml"
+    graph_json_path = directories["graphs"] / "knowledge_graph.json"
+
+    graph_builder.save_graphml(str(graphml_path))
+    graph_builder.save_json(str(graph_json_path))
+
+    graph_stats = graph_builder.stats()
+    graph_analysis = network_analysis(graph_builder.graph)
+
+    save_json(
+        {
+            "graph_stats": graph_stats,
+            "network_analysis": graph_analysis,
+        },
+        directories["processed"] / "graph_summary.json",
+    )
+
+    print(f"Saved knowledge graph to {graphml_path}")
+    print(f"Knowledge graph stats: {graph_stats}")
+
+    print("Creating knowledge graph visualization...")
+    graph_html_path = directories["figures"] / "knowledge_graph.html"
+
+    visualize_interactive(
+        graph_builder.graph,
+        output_path=str(graph_html_path),
+        max_nodes=kg_cfg.get("max_nodes_visualize", 150),
+    )
+
+    print(f"Saved graph visualization to {graph_html_path}")
+
+    print("Building BM25 retrieval index...")
+    retrieval_cfg = config.get("retrieval", {})
+
+    bm25 = BM25Retriever(
+        k1=retrieval_cfg.get("bm25_k1", 1.5),
+        b=retrieval_cfg.get("bm25_b", 0.75),
+    )
+
+    bm25.index(doc_ids, texts)
+    bm25_results = bm25.search(query, top_k=retrieval_cfg.get("top_k", 10))
+
+    save_json(
+        [
+            {
+                "rank": result.rank,
+                "doc_id": result.doc_id,
+                "score": result.score,
+                "text": result.text,
+            }
+            for result in bm25_results
+        ],
+        directories["processed"] / "bm25_search_results.json",
+    )
+
+    print("Saved BM25 search results.")
+
+    print("Running LDA topic modeling...")
+    topic_cfg = config.get("topic_modeling", {})
+    num_topics = min(topic_cfg.get("num_topics", 10), max(1, len(documents)))
+
+    try:
+        lda = LDATopicModel(
+            num_topics=num_topics,
+            passes=topic_cfg.get("lda_passes", 10),
+            iterations=topic_cfg.get("lda_iterations", 50),
+            seed=config.get("project", {}).get("seed", 42),
+        )
+
+        lda.fit(tokenized_docs)
+        topics = lda.get_topics(top_n_words=10)
+
+        save_json(
+            {
+                f"topic_{idx}": [
+                    {"word": word, "weight": weight}
+                    for word, weight in topic_words
+                ]
+                for idx, topic_words in enumerate(topics)
+            },
+            directories["processed"] / "lda_topics.json",
+        )
+
+        print("Saved LDA topics.")
+
+    except Exception as exc:
+        print(f"Skipping LDA topic modeling because it failed: {exc}")
+
+    if not skip_embeddings:
+        print("Building embeddings and semantic network...")
+
+        try:
+            import networkx as nx
+
+            from src.embeddings.network_embeddings import SemanticNetworkBuilder
+            from src.embeddings.sentence_embeddings import SentenceEmbedder
+
+            embedding_cfg = config.get("embeddings", {})
+
+            embedder = SentenceEmbedder(
+                model_name=embedding_cfg.get("model", "all-MiniLM-L6-v2"),
+                batch_size=embedding_cfg.get("batch_size", 32),
+            )
+
+            embedder.fit(doc_ids, texts)
+
+            semantic_builder = SemanticNetworkBuilder(
+                similarity_threshold=embedding_cfg.get("similarity_threshold", 0.5),
+            )
+
+            semantic_graph = semantic_builder.build_knn_network(
+                doc_ids=doc_ids,
+                embeddings=embedder.embeddings,
+                k=min(3, max(1, len(doc_ids) - 1)),
+            )
+
+            semantic_graph_path = directories["graphs"] / "semantic_network.graphml"
+            nx.write_graphml(semantic_graph, semantic_graph_path)
+
+            semantic_stats = semantic_builder.network_stats(semantic_graph)
+
+            save_json(
+                semantic_stats,
+                directories["processed"] / "semantic_network_summary.json",
+            )
+
+            print(f"Saved semantic network to {semantic_graph_path}")
+
+        except Exception as exc:
+            print(f"Skipping embedding/semantic network step because it failed: {exc}")
+
+    print("Pipeline completed successfully.")
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Run the NLP Knowledge Discovery Pipeline."
+    )
+
+    parser.add_argument(
+        "--input",
+        type=str,
+        default=None,
+        help="Optional input CSV, JSON, or JSONL file. If omitted, data/raw is searched.",
+    )
+
+    parser.add_argument(
+        "--query",
+        type=str,
+        default="knowledge graphs and language models",
+        help="Example retrieval query used for BM25 output.",
+    )
+
+    parser.add_argument(
+        "--skip-embeddings",
+        action="store_true",
+        help="Skip embedding and semantic-network creation for a faster first run.",
+    )
+
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
+
+    run_pipeline(
+        input_path=args.input,
+        query=args.query,
+        skip_embeddings=args.skip_embeddings,
+    )
+
+
+if __name__ == "__main__":
+    main()
