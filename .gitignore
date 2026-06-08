@@ -22,42 +22,86 @@ env/
 conda-env/
 
 # ============================================================
-# Data (large files — not tracked, see README for download)
+# Data (generated or large datasets)
 # ============================================================
 data/raw/*
 !data/raw/.gitkeep
+
 data/processed/*
 !data/processed/.gitkeep
+
 data/graphs/*
 !data/graphs/.gitkeep
 
 # ============================================================
-# Models / embeddings caches
+# Models / Embeddings / Vector Stores
 # ============================================================
 *.pt
+*.pth
 *.bin
+*.safetensors
 *.faiss
 *.index
-.cache/
+
 models/
+artifacts/
+
+.cache/
+huggingface/
+sentence_transformers/
 
 # ============================================================
-# Reports — keep figures placeholder, ignore generated output
+# Reports / Generated Outputs
 # ============================================================
+reports/*
+!reports/.gitkeep
+!reports/figures/
+
 reports/figures/*
 !reports/figures/.gitkeep
-reports/*.html
+
+# Graph visualizations
+*.html
+
+# Generated images
+*.png
+*.jpg
+*.jpeg
+*.svg
 
 # ============================================================
-# Environment / secrets
+# Jupyter
+# ============================================================
+.ipynb_checkpoints/
+
+# Optional: strip notebook execution artefacts
+*.nbconvert.ipynb
+
+# ============================================================
+# Logs
+# ============================================================
+logs/
+*.log
+
+# ============================================================
+# Environment / Secrets
 # ============================================================
 .env
+.env.*
 *.local
 
 # ============================================================
-# OS / IDE
+# IDE / OS
 # ============================================================
 .DS_Store
 Thumbs.db
+
 .vscode/
 .idea/
+
+# ============================================================
+# Temporary files
+# ============================================================
+tmp/
+temp/
+*.tmp
