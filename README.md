@@ -1,255 +1,216 @@
 # NLP Knowledge Discovery Platform
 
-> AI-Powered Scientific Knowledge Discovery System using Natural Language Processing, Knowledge Graphs, Graph Neural Networks, Embeddings, and Large Language Models.
+> AI-powered scientific knowledge discovery system using Natural Language Processing, semantic retrieval, knowledge graphs, embeddings, graph analytics, and optional extensions with Graph Neural Networks and Large Language Models.
 
 ---
 
-# Project Description
+## Project Description
 
-The **NLP Knowledge Discovery Platform** is a research-oriented Natural Language Processing (NLP) project that combines multiple advanced AI topics into one unified system.
+The **NLP Knowledge Discovery Platform** is a research-oriented Natural Language Processing project for scientific document exploration.
 
-The goal of this project is to transform large collections of unstructured scientific or technical text into structured and searchable knowledge.
+Scientific and technical documents contain large amounts of valuable information, but this information is usually stored in unstructured text. Traditional keyword-based search can retrieve documents that contain matching terms, but it often fails to capture deeper semantic relationships between concepts, methods, datasets, authors, research topics, and related papers.
 
-The platform combines:
+This project investigates how Natural Language Processing methods can transform unstructured scientific text into structured knowledge and support better information retrieval through semantic retrieval and knowledge graphs.
 
-- Information Extraction & Retrieval
-- Knowledge Graph Construction
-- Topic Modeling
-- Embeddings & Semantic Networks
-- Graph Neural Networks (GNNs)
-- Large Language Models (LLMs)
-- Bias Detection & Debiasing
+The central research question is:
 
-The system will process scientific papers, articles, technical reports, or research datasets and automatically:
+> **Can a knowledge graph built from scientific texts improve semantic search and knowledge discovery compared to traditional keyword-based retrieval?**
 
-- extract entities and relationships,
-- construct knowledge graphs,
-- generate semantic embeddings,
-- retrieve relevant information,
-- discover hidden research topics,
-- apply graph-based reasoning,
-- and analyze bias in NLP systems.
-
-The final outcome will be an intelligent knowledge discovery platform with visual analytics and semantic search capabilities.
+The platform is designed to process scientific papers, especially arXiv metadata containing titles, abstracts, authors, categories, and publication metadata. It extracts structured information, builds a knowledge graph, creates semantic embeddings, performs retrieval experiments, and supports exploratory analysis through notebooks and visualizations.
 
 ---
 
-# Main Objectives
+## Main Objectives
 
 The project aims to:
 
-- Build a complete NLP processing pipeline
-- Extract entities and semantic relationships from documents
-- Construct and analyze knowledge graphs
-- Implement semantic information retrieval
-- Discover hidden topics in document collections
-- Generate embeddings for semantic similarity analysis
-- Apply Graph Neural Networks to graph data
-- Combine LLMs with Knowledge Graphs using RAG pipelines
-- Evaluate bias in embeddings and LLM outputs
-- Implement debiasing strategies
-- Create interactive visualizations and dashboards
+- Build a complete NLP processing pipeline for scientific documents
+- Load and preprocess arXiv-style scientific metadata
+- Extract entities, keywords, and relations from titles and abstracts
+- Construct and analyze a scientific knowledge graph
+- Implement keyword-based retrieval using BM25
+- Implement semantic retrieval using Sentence Transformers
+- Compare retrieval methods using evaluation metrics
+- Explore document collections through topic modeling
+- Build semantic similarity networks from document embeddings
+- Prepare the project for optional GNN, LLM + KG, and bias analysis extensions
+- Provide reproducible notebooks, tests, and documentation
 
 ---
 
-# Topics Covered
+## Topics Covered
 
-## 1. Information Extraction & Retrieval
+### Information Extraction & Retrieval
 
-This module converts raw text into structured information.
+This module converts raw scientific text into structured and searchable information.
 
-### Features
-- Named Entity Recognition (NER)
-- Relation Extraction
+Implemented and planned features include:
+
+- Named Entity Recognition
 - Keyword Extraction
-- Semantic Search
+- Relation Extraction
+- BM25 Retrieval
+- Embedding-based Semantic Retrieval
 - Document Ranking
-- Dense Retrieval
+- Retrieval Evaluation
 
-### Example Use Cases
-- Find related scientific papers
-- Extract important concepts from research articles
-- Build searchable document collections
+Main technologies:
 
-### Technologies
 - spaCy
-- BM25
+- rank-bm25
 - Sentence Transformers
 - Hugging Face Transformers
 
 ---
 
-## 2. Knowledge Graphs
+### Knowledge Graphs
 
-This module transforms extracted information into graph structures.
+The knowledge graph module transforms extracted information into graph structures.
 
-### Example Nodes
-- Authors
+Example node types:
+
 - Papers
-- Institutions
-- Algorithms
-- Datasets
+- Authors
+- Topics
 - Concepts
+- Methods
+- Datasets
 
-### Example Relationships
+Example relationship types:
+
 - `AUTHORED_BY`
-- `CITES`
-- `USES`
-- `RELATED_TO`
 - `BELONGS_TO_TOPIC`
+- `MENTIONS`
+- `RELATED_TO`
+- `USES_METHOD`
 
-### Features
+Implemented and planned features include:
+
 - Graph construction
+- Graph export to JSON and GraphML
 - Graph querying
 - Graph visualization
-- Relationship analysis
+- Graph statistics and centrality analysis
+- Knowledge graph-enhanced retrieval
 
-### Technologies
+Main technologies:
+
 - NetworkX
-- Neo4j
-- RDFLib
+- PyVis
+- GraphML / JSON graph export
 
 ---
 
-## 3. Large Language Models + Knowledge Graphs
+### Topic Modeling
 
-This module investigates how LLMs can interact with structured knowledge.
+Topic modeling is used to discover hidden research themes inside a document collection.
 
-### Features
-- Retrieval-Augmented Generation (RAG)
-- Graph-grounded Question Answering
-- Context-aware prompting
-- Hallucination reduction
+Implemented and planned methods:
 
-### Example Use Cases
-- Ask questions over a knowledge graph
-- Generate grounded scientific summaries
-- Retrieve evidence-based answers
-
-### Technologies
-- Hugging Face Transformers
-- Sentence Transformers
-- Vector Databases
-- RAG Pipelines
-
----
-
-## 4. Topic Modeling
-
-This module discovers hidden themes inside document collections.
-
-### Methods
-- Latent Dirichlet Allocation (LDA)
+- Latent Dirichlet Allocation
 - BERTopic
-- Non-negative Matrix Factorization (NMF)
-
-### Outputs
-- Topic Clusters
-- Topic Trends
-- Topic Evolution
-- Topic Visualization
+- Topic summaries
+- Topic visualization
+- Topic interpretation
 
 ---
 
-## 5. Embeddings & Networks
+### Embeddings & Semantic Networks
 
-This module creates semantic vector representations of text and graphs.
+The embedding module creates semantic vector representations of scientific documents.
 
-### Embedding Types
-- Word Embeddings
-- Sentence Embeddings
-- Document Embeddings
-- Graph Embeddings
+Implemented and planned features:
 
-### Network Types
-- Citation Networks
-- Semantic Similarity Networks
-- Co-author Networks
-- Concept Networks
-
-### Applications
-- Semantic search
-- Similarity analysis
-- Recommendation systems
-- Clustering
+- Sentence embeddings
+- Document embeddings
+- Semantic similarity matrices
+- Semantic similarity networks
+- Embedding-based retrieval
+- Document similarity analysis
 
 ---
 
-## 6. Graph Neural Networks (GNNs)
+### Graph Neural Networks
 
-This module applies deep learning to graph structures.
+Graph Neural Networks are planned as an optional extension after the knowledge graph and retrieval pipeline are stable.
 
-### Methods
-- Graph Convolutional Networks (GCN)
+Possible tasks:
+
+- Node classification
+- Link prediction
+- Graph embedding learning
+- Graph-based recommendation
+
+Possible methods:
+
+- GCN
 - GraphSAGE
-- Graph Attention Networks (GAT)
-
-### Tasks
-- Node Classification
-- Link Prediction
-- Graph Embedding Learning
-
-### Example Applications
-- Predict missing relationships
-- Detect important nodes
-- Infer hidden graph structure
+- GAT
 
 ---
 
-## 7. Bias and Debiasing in NLP
+### Large Language Models + Knowledge Graphs
 
-This module investigates fairness and responsible AI.
+LLM + KG integration is planned as an optional extension.
 
-### Bias Types
-- Gender Bias
-- Cultural Bias
-- Domain Bias
-- Stereotypical Associations
+Possible features:
 
-### Debiasing Techniques
-- Embedding Projection
-- Balanced Sampling
-- Prompt Engineering
-- Adversarial Debiasing
-
-### Goals
-- Analyze fairness of embeddings
-- Evaluate LLM behavior
-- Reduce harmful associations
+- Graph-grounded question answering
+- Retrieval-Augmented Generation
+- Context construction from documents and graph neighborhoods
+- Evidence-based scientific summaries
+- Hallucination reduction through structured context
 
 ---
 
-# Proposed Architecture
+### Bias and Debiasing in NLP
+
+Bias analysis is planned as an optional extension.
+
+Possible analysis areas:
+
+- Bias in embeddings
+- Bias in scientific document representations
+- Domain imbalance
+- Prompt-based bias evaluation
+- Debiasing strategies
+
+---
+
+## Proposed Architecture
 
 ```text
-Documents / PDFs / CSV Files
-            |
-            v
-Text Extraction & Cleaning
-            |
-            v
-Information Extraction
-            |
-            +----------------------+
-            |                      |
-            v                      v
-   Knowledge Graph          Embedding Store
-            |                      |
-            v                      v
-Graph Analysis / GNNs       Semantic Retrieval
-            |                      |
-            +----------+-----------+
-                       |
-                       v
-              LLM-based QA System
-                       |
-                       v
-        Dashboard / Visualizations / Report
+Scientific Documents / arXiv Metadata
+              |
+              v
+      Text Loading & Cleaning
+              |
+              v
+       NLP Preprocessing
+              |
+              v
+ Information Extraction Pipeline
+              |
+      +-------+--------+
+      |                |
+      v                v
+Knowledge Graph   Embedding Store
+      |                |
+      v                v
+Graph Analysis   Semantic Retrieval
+      |                |
+      +-------+--------+
+              |
+              v
+ Retrieval Evaluation / Comparison
+              |
+              v
+Notebooks / Dashboard / Final Report
 ```
 
 ---
 
-# Repository Structure
+## Repository Structure
 
 ```text
 nlp-knowledge-discovery-platform/
@@ -279,6 +240,8 @@ nlp-knowledge-discovery-platform/
 │   ├── knowledge_graph/
 │   ├── topic_modeling/
 │   ├── embeddings/
+│   ├── pipeline/
+│   ├── utils/
 │   ├── gnn/
 │   ├── llm_kg/
 │   ├── bias/
@@ -292,35 +255,78 @@ nlp-knowledge-discovery-platform/
 
 ---
 
-# Installation
+## Current Project Status
 
-## Clone Repository
+### Already Implemented
+
+The current project already includes:
+
+- Project configuration via `config.yaml`
+- Central path and configuration utilities in `src/utils/`
+- Document loading for CSV, JSON, and JSONL arXiv metadata
+- Text preprocessing and cleaning
+- Named Entity Recognition
+- Keyword extraction
+- Relation extraction
+- BM25 retrieval module
+- Embedding retrieval module
+- Vector store module
+- Knowledge graph construction
+- Knowledge graph querying
+- Knowledge graph visualization
+- LDA topic modeling
+- BERTopic wrapper
+- Sentence embeddings
+- Semantic network construction
+- End-to-end pipeline entry point
+- Analytical notebooks 01–04
+- Placeholder notebooks for bias and GNN experiments
+- Initial test structure
+
+### Still Missing or Incomplete
+
+The following parts are still missing or incomplete:
+
+- Scalable arXiv subset generation
+- Memory-efficient full arXiv JSON loading
+- Retrieval evaluation metrics
+- Manual relevance evaluation dataset
+- BM25 vs semantic retrieval comparison
+- Knowledge graph-enhanced retrieval
+- End-to-end experiment runners
+- Dashboard or final analysis interface
+- Final report figures and tables
+- Comprehensive tests for all modules
+- GNN implementation
+- LLM + Knowledge Graph integration
+- Bias and debiasing implementation
+
+---
+
+## Installation
+
+### Clone Repository
 
 ```bash
 git clone https://github.com/AngeloOttendorfer02/nlp-knowledge-discovery-platform.git
 cd nlp-knowledge-discovery-platform
 ```
 
----
-
-## Create Conda Environment
+### Create Conda Environment
 
 ```bash
 conda create -n nlp-kg python=3.10
 conda activate nlp-kg
 ```
 
----
-
-## Install Dependencies
+### Install Dependencies
 
 ```bash
+pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
----
-
-## Download spaCy Model
+### Download spaCy Model
 
 ```bash
 python -m spacy download en_core_web_sm
@@ -328,56 +334,16 @@ python -m spacy download en_core_web_sm
 
 ---
 
-# Installation, Reproducibility and Smoke Tests
-
-This section explains how a new developer can clone the repository, install the environment, prepare the required folders, and run basic checks to verify that the current pipeline works.
-
-The commands below are intended to be run from the repository root.
-
----
-
 ## Recommended Python Version
 
-Use **Python 3.10 or Python 3.11** for best compatibility with the NLP ecosystem.
+Use **Python 3.10 or Python 3.11** for best compatibility with the NLP and machine learning ecosystem.
 
 Avoid very new Python versions such as Python 3.13 or Python 3.14 unless all dependencies have been verified manually, because some NLP and ML packages may not provide stable wheels for the newest Python versions yet.
 
 Check your Python version:
 
 ```bash
-python3 --version
-```
-
----
-
-## Option A — Setup with Python venv
-
-```bash
-git clone https://github.com/AngeloOttendorfer02/nlp-knowledge-discovery-platform.git
-cd nlp-knowledge-discovery-platform
-
-python3 -m venv venv
-source venv/bin/activate
-
-pip install --upgrade pip
-pip install -r requirements.txt
-python -m spacy download en_core_web_sm
-```
-
----
-
-## Option B — Setup with Conda
-
-```bash
-git clone https://github.com/AngeloOttendorfer02/nlp-knowledge-discovery-platform.git
-cd nlp-knowledge-discovery-platform
-
-conda create -n nlp-kg python=3.10
-conda activate nlp-kg
-
-pip install --upgrade pip
-pip install -r requirements.txt
-python -m spacy download en_core_web_sm
+python --version
 ```
 
 ---
@@ -388,22 +354,126 @@ The repository expects the following folders to exist:
 
 ```bash
 mkdir -p data/raw data/processed data/graphs reports/figures
+```
 
-touch data/raw/.gitkeep \
-      data/processed/.gitkeep \
-      data/graphs/.gitkeep \
-      reports/.gitkeep \
-      reports/figures/.gitkeep
+On Windows PowerShell:
+
+```powershell
+New-Item -ItemType Directory -Force data/raw, data/processed, data/graphs, reports/figures
 ```
 
 Purpose of these folders:
 
-- `data/raw/` — original input data, for example arXiv metadata or small test files.
-- `data/processed/` — cleaned or transformed intermediate data.
-- `data/graphs/` — exported knowledge graphs, for example JSON or GraphML files.
-- `reports/figures/` — plots and visualizations generated during experiments.
+- `data/raw/` — original input data, for example arXiv metadata
+- `data/processed/` — cleaned or transformed intermediate data
+- `data/graphs/` — exported knowledge graphs
+- `reports/figures/` — plots and visualizations generated during experiments
 
-Large datasets should not be committed directly unless explicitly agreed by the team. If the dataset is too large, document the download source and expected file path.
+Large datasets and generated files should not be committed to Git.
+
+---
+
+## Dataset
+
+The project is designed around the arXiv scientific papers metadata dataset.
+
+Expected fields:
+
+- `id`
+- `title`
+- `abstract`
+- `authors`
+- `categories`
+- `update_date`
+
+Recommended categories for this project:
+
+- `cs.AI`
+- `cs.LG`
+- `cs.CL`
+- `cs.IR`
+
+The full arXiv metadata file is very large. For normal development, a smaller filtered subset should be created first.
+
+Recommended future command:
+
+```bash
+python scripts/create_arxiv_subset.py ^
+  --input data/raw/arxiv-metadata-oai-snapshot.json ^
+  --output data/raw/arxiv_cs_subset.csv ^
+  --max-papers 10000
+```
+
+---
+
+## Running the Pipeline
+
+Run the end-to-end NLP pipeline:
+
+```bash
+python -m src.pipeline.run_pipeline --skip-embeddings
+```
+
+Run with a specific input file:
+
+```bash
+python -m src.pipeline.run_pipeline --input data/raw/arxiv_cs_subset.csv --skip-embeddings
+```
+
+Run with embeddings enabled:
+
+```bash
+python -m src.pipeline.run_pipeline --input data/raw/arxiv_cs_subset.csv
+```
+
+The pipeline generates outputs such as:
+
+```text
+data/processed/processed_documents.csv
+data/processed/entities.csv
+data/processed/keywords.csv
+data/processed/relations.csv
+data/processed/bm25_search_results.json
+data/processed/graph_summary.json
+data/processed/lda_topics.json
+data/graphs/knowledge_graph.graphml
+data/graphs/knowledge_graph.json
+reports/figures/knowledge_graph.html
+```
+
+---
+
+## Notebooks
+
+Implemented notebooks:
+
+```text
+notebooks/01_data_exploration.ipynb
+notebooks/02_information_extraction.ipynb
+notebooks/03_topic_modeling.ipynb
+notebooks/04_embeddings_networks.ipynb
+```
+
+Planned or placeholder notebooks:
+
+```text
+notebooks/05_bias_analysis.ipynb
+notebooks/06_gnn_experiments.ipynb
+notebooks/07_retrieval_evaluation.ipynb
+```
+
+Recommended notebook workflow:
+
+1. Run the pipeline first
+2. Load processed outputs in notebooks
+3. Analyze and visualize results
+4. Clear outputs before committing notebooks
+
+Clear notebook outputs:
+
+```bash
+jupyter nbconvert --clear-output --inplace notebooks/01_data_exploration.ipynb notebooks/02_information_extraction.ipynb notebooks/03_topic_modeling.ipynb notebooks/04_embeddings_networks.ipynb
+```
 
 ---
 
@@ -416,6 +486,22 @@ python -m compileall src
 ```
 
 Expected result: no Python syntax errors.
+
+---
+
+## Running Tests
+
+Run all tests:
+
+```bash
+pytest -v
+```
+
+Run pipeline tests only:
+
+```bash
+pytest tests/test_pipeline.py -v
+```
 
 ---
 
@@ -451,147 +537,13 @@ print("Import smoke test passed.")
 PY
 ```
 
-Expected result: every module prints `OK:` and the script ends with `Import smoke test passed.`
-
----
-
-## Minimal End-to-End Smoke Test
-
-This test creates a tiny artificial arXiv-like JSONL dataset and verifies the current pipeline components:
-
-- JSONL document loading
-- document object conversion
-- text cleaning
-- text chunking
-- BM25 retrieval
-- spaCy entity extraction
-- co-occurrence relation extraction
-- knowledge graph construction
-- graph export to JSON and GraphML
-
-```bash
-python - <<'PY'
-from pathlib import Path
-import json
-
-from src.preprocessing.document_loader import load_arxiv_jsonl, dataframe_to_documents
-from src.preprocessing.text_cleaning import clean_text, chunk_text
-from src.retrieval.bm25_retriever import BM25Retriever
-from src.extraction.entity_extraction import EntityExtractor
-from src.extraction.relation_extraction import CooccurrenceRelationExtractor
-from src.knowledge_graph.graph_builder import KnowledgeGraphBuilder
-
-Path("data/raw").mkdir(parents=True, exist_ok=True)
-Path("data/graphs").mkdir(parents=True, exist_ok=True)
-
-sample_path = Path("data/raw/tiny_arxiv.jsonl")
-
-records = [
-    {
-        "id": "001",
-        "title": "Graph Neural Networks for Scientific Document Retrieval",
-        "abstract": "We study graph neural networks and semantic retrieval for scientific papers.",
-        "authors": "Alice Smith, Bob Miller",
-        "categories": "cs.AI cs.IR",
-        "update_date": "2026-01-01",
-    },
-    {
-        "id": "002",
-        "title": "Transformer Models for Information Extraction",
-        "abstract": "BERT and transformer models are used for named entity recognition and relation extraction.",
-        "authors": "Carol Jones",
-        "categories": "cs.CL",
-        "update_date": "2026-01-02",
-    },
-    {
-        "id": "003",
-        "title": "Medical Image Segmentation",
-        "abstract": "This paper studies convolutional neural networks for image segmentation.",
-        "authors": "David Brown",
-        "categories": "cs.CV",
-        "update_date": "2026-01-03",
-    },
-]
-
-with sample_path.open("w", encoding="utf-8") as f:
-    for record in records:
-        f.write(json.dumps(record) + "\n")
-
-df = load_arxiv_jsonl(
-    str(sample_path),
-    categories=["cs.AI", "cs.CL", "cs.IR"],
-    sample_size=None,
-)
-
-print("Loaded documents:")
-print(df[["doc_id", "title", "categories"]])
-
-documents = dataframe_to_documents(df)
-texts = [doc.text for doc in documents]
-doc_ids = [doc.doc_id for doc in documents]
-
-print("\nClean text example:")
-print(clean_text(texts[0]))
-
-print("\nChunk example:")
-print(chunk_text(["a", "b", "c", "d", "e"], chunk_size=2))
-
-retriever = BM25Retriever(tokenizer=lambda text: text.lower().split())
-retriever.index(doc_ids, texts)
-
-results = retriever.search("transformer information extraction", top_k=2)
-
-print("\nBM25 results:")
-for result in results:
-    print(result.rank, result.doc_id, round(result.score, 4), result.text[:80])
-
-entity_extractor = EntityExtractor(entity_types=["ORG", "PERSON", "GPE", "PRODUCT", "WORK_OF_ART"])
-entities_per_doc = entity_extractor.extract_batch(texts)
-
-print("\nEntities:")
-for doc_id, entities in zip(doc_ids, entities_per_doc):
-    print(doc_id, [(e.text, e.label) for e in entities])
-
-relation_extractor = CooccurrenceRelationExtractor()
-kg = KnowledgeGraphBuilder()
-
-for doc, entities in zip(documents, entities_per_doc):
-    kg.add_paper(
-        doc_id=doc.doc_id,
-        title=doc.title,
-        authors=doc.authors,
-        categories=doc.categories,
-    )
-    kg.add_entities(doc.doc_id, entities)
-    kg.add_relations(relation_extractor.extract(doc.text, entities))
-
-print("\nKG stats:")
-print(kg.stats())
-
-kg.save_json("data/graphs/tiny_graph.json")
-kg.save_graphml("data/graphs/tiny_graph.graphml")
-
-print("\nSmoke test passed.")
-PY
-```
-
-Expected result:
-
-- documents are loaded from the generated JSONL file,
-- BM25 returns ranked search results,
-- entities are extracted with spaCy,
-- a small knowledge graph is built,
-- `data/graphs/tiny_graph.json` is created,
-- `data/graphs/tiny_graph.graphml` is created,
-- the script ends with `Smoke test passed.`
-
 ---
 
 ## Optional Semantic Retrieval Smoke Test
 
 This test verifies the embedding-based retrieval path.
 
-It may download a Sentence Transformers model on the first run and can take longer than the basic smoke test.
+It may download a Sentence Transformers model on the first run and can take longer than the basic smoke tests.
 
 ```bash
 python - <<'PY'
@@ -616,65 +568,17 @@ print("Embedding retrieval smoke test passed.")
 PY
 ```
 
-If this fails because FAISS is missing, install it with:
-
-```bash
-pip install faiss-cpu
-```
-
-If this fails because Sentence Transformers is missing, install it with:
-
-```bash
-pip install sentence-transformers
-```
-
-Both packages should ideally be listed in `requirements.txt` if this module is part of the active project scope.
-
----
-
-## Full Quick-Start Checklist
-
-For a fresh clone, run:
-
-```bash
-git clone https://github.com/AngeloOttendorfer02/nlp-knowledge-discovery-platform.git
-cd nlp-knowledge-discovery-platform
-
-python3 -m venv venv
-source venv/bin/activate
-
-pip install --upgrade pip
-pip install -r requirements.txt
-python -m spacy download en_core_web_sm
-
-mkdir -p data/raw data/processed data/graphs reports/figures
-
-touch data/raw/.gitkeep \
-      data/processed/.gitkeep \
-      data/graphs/.gitkeep \
-      reports/.gitkeep \
-      reports/figures/.gitkeep
-
-python -m compileall src
-```
-
-Then run the import smoke test and the minimal end-to-end smoke test from the sections above.
-
 ---
 
 ## Troubleshooting
 
-### `ModuleNotFoundError: No module named 'pandas'`
+### `ModuleNotFoundError: No module named 'src'`
 
-Install project dependencies:
-
-```bash
-pip install -r requirements.txt
-```
+Start Jupyter or Python from the repository root, or make sure the repository root is added to `sys.path`.
 
 ### `spaCy model 'en_core_web_sm' is not installed`
 
-Download the model:
+Run:
 
 ```bash
 python -m spacy download en_core_web_sm
@@ -682,7 +586,7 @@ python -m spacy download en_core_web_sm
 
 ### `ModuleNotFoundError: No module named 'rank_bm25'`
 
-Install the BM25 dependency:
+Run:
 
 ```bash
 pip install rank-bm25
@@ -690,429 +594,759 @@ pip install rank-bm25
 
 ### `ModuleNotFoundError: No module named 'faiss'`
 
-Install FAISS CPU:
+Run:
 
 ```bash
 pip install faiss-cpu
 ```
 
-### Sentence Transformers model downloads are slow
+### PyTorch import errors
 
-The first run of embedding retrieval may download `all-MiniLM-L6-v2`. This is normal.
-
-### Problems with Python 3.13 or 3.14
-
-Use Python 3.10 or 3.11 instead:
+Reinstall PyTorch in the active environment:
 
 ```bash
-python3.11 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-python -m spacy download en_core_web_sm
+pip uninstall torch torchvision torchaudio -y
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 ```
 
----
+### Full arXiv JSON causes memory errors
 
-## Current Reproducibility Status
-
-At this stage, the repository contains reusable module implementations for:
-
-- preprocessing,
-- document loading,
-- BM25 retrieval,
-- embedding retrieval,
-- entity extraction,
-- relation extraction,
-- knowledge graph construction,
-- graph querying,
-- graph visualization,
-- topic modeling,
-- semantic embeddings and network embeddings.
-
-The smoke tests above validate that the current codebase can be installed and executed on a fresh environment. They are not yet the final scientific evaluation. The final project will still need:
-
-- real dataset download instructions,
-- complete notebooks,
-- retrieval evaluation queries,
-- comparison of BM25 vs semantic retrieval vs KG-enhanced retrieval,
-- metrics such as Precision@k, Recall@k and MRR,
-- error analysis and interpretation.
+Do not load the full arXiv metadata dump directly inside notebooks. Create a smaller filtered subset first.
 
 ---
 
-# Planned Workflow
+# Development Roadmap
 
-## Step 1 — Data Collection
-- Collect scientific papers or documents
-- Load PDFs, CSV files, or text documents
-- Organize datasets
+The next development phase should focus on making the project scalable, evaluable, and directly aligned with the research question.
 
-## Step 2 — Text Preprocessing
-- Cleaning
-- Tokenization
-- Lemmatization
-- Stopword removal
-- Chunking
+Recommended strategy:
 
-## Step 3 — Information Extraction
-- Extract entities
-- Extract relationships
-- Extract keywords
-
-## Step 4 — Semantic Retrieval
-- Create embeddings
-- Build semantic search
-- Rank relevant documents
-
-## Step 5 — Knowledge Graph Construction
-- Create nodes and edges
-- Store graph structure
-- Visualize graph
-
-## Step 6 — Topic Modeling
-- Discover hidden themes
-- Analyze topic evolution
-- Visualize topics
-
-## Step 7 — Embeddings & Networks
-- Generate embeddings
-- Create similarity networks
-- Analyze semantic relationships
-
-## Step 8 — Graph Neural Networks
-- Prepare graph dataset
-- Train GNN model
-- Evaluate graph reasoning
-
-## Step 9 — LLM + KG Integration
-- Build Retrieval-Augmented Generation pipeline
-- Graph-grounded QA
-- Context-aware prompting
-
-## Step 10 — Bias Analysis & Debiasing
-- Evaluate embedding bias
-- Analyze LLM bias
-- Apply debiasing methods
+1. Make arXiv loading scalable
+2. Create a reusable arXiv subset
+3. Run BM25 baseline retrieval
+4. Run semantic retrieval
+5. Add retrieval metrics
+6. Compare BM25 and semantic retrieval
+7. Add knowledge graph-enhanced retrieval
+8. Generate final analysis outputs
+9. Add dashboard/report visualizations
+10. Only then work on optional extensions such as GNNs, LLM + KG, and bias analysis
 
 ---
 
-# Detailed Commit Roadmap
+## Commit 1 — Add Scalable arXiv Subset Generation
+
+### Goal
+
+Avoid loading the full arXiv metadata dump into memory.
+
+The full arXiv JSON file is too large for notebooks and normal experimentation. Instead, the project should create a smaller CSV subset containing only selected Computer Science categories.
+
+### Implement
+
+Create:
+
+```text
+scripts/create_arxiv_subset.py
+```
+
+The script should:
+
+- Stream the arXiv JSON file line by line
+- Filter papers by categories:
+  - `cs.AI`
+  - `cs.LG`
+  - `cs.CL`
+  - `cs.IR`
+- Keep only necessary fields:
+  - `id`
+  - `title`
+  - `abstract`
+  - `authors`
+  - `categories`
+  - `update_date`
+- Save a manageable subset to:
+  - `data/raw/arxiv_cs_subset.csv`
+- Support command-line arguments:
+  - `--input`
+  - `--output`
+  - `--max-papers`
+  - `--categories`
+
+### Example Command
+
+```bash
+python scripts/create_arxiv_subset.py ^
+  --input data/raw/arxiv-metadata-oai-snapshot.json ^
+  --output data/raw/arxiv_cs_subset.csv ^
+  --max-papers 10000
+```
+
+
 
 ---
 
-# Commit 1 — Initialize Repository
+## Commit 2 — Refactor Dataset Loading for Large JSON Files
 
-### Goals
-- Create repository
-- Add project description
-- Add README
-- Add `.gitignore`
+### Goal
 
-### Tasks
-- Initialize Git repository
-- Create base folders
-- Create initial README
+Make `load_arxiv_jsonl()` memory-safe.
+
+Currently, the loader can read the entire JSON/JSONL file into a list before creating a DataFrame. This can cause memory errors with the full arXiv dataset.
+
+### Implement
+
+Update:
+
+```text
+src/preprocessing/document_loader.py
+```
+
+Improve:
+
+```python
+load_arxiv_jsonl()
+```
+
+so that it:
+
+- Streams records line by line
+- Applies category filtering while reading
+- Stops after `sample_size` matching papers
+- Avoids storing millions of records in memory
+
+### Add Tests
+
+Add tests to:
+
+```text
+tests/test_preprocessing.py
+```
+
+Test cases:
+
+- Loads JSONL sample correctly
+- Filters by category
+- Respects `sample_size`
+- Produces standardized columns
+
+
 
 ---
 
-# Commit 2 — Add Project Structure
+## Commit 3 — Add Retrieval Evaluation Metrics
 
-### Goals
-Create a clean modular architecture.
+### Goal
 
-### Tasks
-- Create `src/`
-- Create `notebooks/`
-- Create `data/`
-- Create `reports/`
-- Create `tests/`
+Implement the evaluation metrics required in the project proposal.
 
----
+The proposal mentions:
 
-# Commit 3 — Add Dependencies & Configuration
+- Precision@K
+- Recall@K
+- Mean Reciprocal Rank
 
-### Goals
-Set up environment and dependencies.
+### Implement
 
-### Tasks
-- Create `requirements.txt`
-- Create `config.yaml`
-- Define model configurations
-- Define project paths
+Create:
 
----
+```text
+src/evaluation/__init__.py
+src/evaluation/retrieval_metrics.py
+```
 
-# Commit 4 — Implement Data Loading & Preprocessing
+Functions:
 
-### Goals
-Prepare text data for NLP processing.
+```python
+precision_at_k(retrieved_ids, relevant_ids, k)
+recall_at_k(retrieved_ids, relevant_ids, k)
+mean_reciprocal_rank(results, relevance_sets)
+evaluate_retrieval_run(...)
+```
 
-### Tasks
-- Load PDFs and CSV files
-- Clean text
-- Normalize text
-- Tokenize documents
-- Remove stopwords
+### Add Tests
 
-### Files
+Create:
+
+```text
+tests/test_evaluation.py
+```
+
+Test:
+
+- Perfect ranking
+- Empty relevant set
+- No retrieved relevant result
+- Partial match
+- MRR calculation
+
+
+
+## Commit 4 — Add Manual Relevance Evaluation Set
+
+### Goal
+
+Create a small evaluation dataset for retrieval experiments.
+
+Since the arXiv dataset does not come with relevance labels for custom queries, the project needs a small manually defined evaluation set.
+
+### Implement
+
+Create:
+
+```text
+data/evaluation/retrieval_queries.example.json
+```
+
+or:
+
+```text
+evaluation/retrieval_queries.example.json
+```
+
+Suggested structure:
+
+```json
+[
+  {
+    "query": "knowledge graph semantic retrieval",
+    "relevant_doc_ids": ["..."]
+  },
+  {
+    "query": "graph neural networks for link prediction",
+    "relevant_doc_ids": ["..."]
+  }
+]
+```
+
+Because real evaluation labels may be dataset-specific, commit an example/template file and document how to create the real one locally.
+
+
+
+## Commit 5 — Add BM25 Baseline Experiment Runner
+
+### Goal
+
+Create a reproducible script for the baseline retrieval experiment.
+
+### Implement
+
+Create:
+
+```text
+src/experiments/run_bm25_baseline.py
+```
+
+The script should:
+
+- Load `processed_documents.csv`
+- Build a BM25 index
+- Load evaluation queries
+- Retrieve top-k documents
+- Compute Precision@K, Recall@K, and MRR
+- Save results to:
+  - `reports/tables/bm25_results.csv`
+  - `reports/tables/bm25_metrics.csv`
+
+### Command
+
+```bash
+python -m src.experiments.run_bm25_baseline
+```
+
+
+## Commit 6 — Add Semantic Retrieval Experiment Runner
+
+### Goal
+
+Evaluate Sentence Transformer retrieval against BM25.
+
+### Implement
+
+Create:
+
+```text
+src/experiments/run_semantic_retrieval.py
+```
+
+The script should:
+
+- Load processed documents
+- Build document embeddings
+- Run semantic search for evaluation queries
+- Save retrieved results
+- Compute the same metrics as BM25
+- Save outputs to:
+  - `reports/tables/semantic_results.csv`
+  - `reports/tables/semantic_metrics.csv`
+
+### Recommended Subset Size
+
+Use a small subset first because embeddings can be slow:
+
+```yaml
+sample_size: 1000
+```
+
+Then increase to:
+
+```yaml
+sample_size: 5000
+```
+
+or:
+
+```yaml
+sample_size: 10000
+```
+
+
+
+## Commit 7 — Add BM25 vs Semantic Retrieval Comparison Notebook
+
+### Goal
+
+Add an analysis notebook that directly compares retrieval methods.
+
+### Implement
+
+Create:
+
+```text
+notebooks/07_retrieval_evaluation.ipynb
+```
+
+The notebook should include:
+
+- BM25 results table
+- Semantic retrieval results table
+- Precision@K comparison
+- Recall@K comparison
+- MRR comparison
+- Example query analysis
+- Error analysis
+
+### Visualizations
+
+Add:
+
+- Bar chart: BM25 vs Semantic Precision@K
+- Bar chart: BM25 vs Semantic Recall@K
+- Table of qualitative examples
+
+
+
+## Commit 8 — Implement Knowledge Graph-Enhanced Retrieval
+
+### Goal
+
+Use graph structure to improve or explain retrieval results.
+
+This is central to the research question.
+
+### Implement
+
+Create:
+
+```text
+src/retrieval/kg_enhanced_retriever.py
+```
+
+Possible approach:
+
+1. Run BM25 or semantic retrieval
+2. Extract entities from the query
+3. Find related concepts in the knowledge graph
+4. Expand or rerank documents connected to those concepts
+5. Return final ranked documents
+
+Suggested class:
+
+```python
+class KGEnhancedRetriever:
+    def __init__(self, base_retriever, graph):
+        ...
+
+    def search(self, query: str, top_k: int = 10):
+        ...
+```
+
+### Outputs
+
+Save:
+
+```text
+reports/tables/kg_enhanced_results.csv
+reports/tables/kg_enhanced_metrics.csv
+```
+
+
+
+## Commit 9 — Add Retrieval Method Comparison Experiment
+
+### Goal
+
+Compare all retrieval approaches in one experiment.
+
+Methods:
+
+- BM25
+- Semantic Retrieval
+- KG-enhanced Retrieval
+
+### Implement
+
+Create:
+
+```text
+src/experiments/compare_retrieval_methods.py
+```
+
+The script should:
+
+- Run all retrieval methods
+- Evaluate them with the same query set
+- Save a final comparison table
+- Save qualitative examples
+
+### Output
+
+```text
+reports/tables/retrieval_comparison.csv
+```
+
+Example table:
+
+| method | precision@5 | recall@5 | mrr |
+|---|---:|---:|---:|
+| BM25 | ... | ... | ... |
+| Semantic | ... | ... | ... |
+| KG-enhanced | ... | ... | ... |
+
+
+
+## Commit 10 — Improve Knowledge Graph Analysis
+
+### Goal
+
+Make the graph analysis more useful for interpretation.
+
+### Implement
+
+Extend:
+
+```text
+src/knowledge_graph/graph_queries.py
+src/knowledge_graph/graph_visualization.py
+```
+
+Add:
+
+- Top central concepts
+- Top connected authors
+- Top paper-concept relations
+- Connected component summary
+- Degree distribution
+- PageRank table
+- Community detection if feasible
+
+### Output
+
+```text
+reports/tables/graph_statistics.csv
+reports/figures/knowledge_graph_top_nodes.png
+```
+
+
+## Commit 11 — Add Streamlit Dashboard
+
+### Goal
+
+Create a simple interactive project dashboard.
+
+### Implement
+
+Update:
+
+```text
+src/visualization/dashboard.py
+```
+
+Dashboard pages:
+
+- Dataset overview
+- Search documents
+- BM25 search
+- Semantic search
+- Knowledge graph statistics
+- Topic modeling results
+- Retrieval comparison
+
+### Run Command
+
+```bash
+streamlit run src/visualization/dashboard.py
+```
+
+
+
+## Commit 12 — Add Final Report Tables and Figures
+
+### Goal
+
+Generate outputs needed for the final project report and presentation.
+
+### Implement
+
+Create:
+
+```text
+src/experiments/generate_report_assets.py
+```
+
+Generate:
+
+- Dataset statistics table
+- Category distribution figure
+- Retrieval comparison table
+- Topic modeling summaries
+- Knowledge graph statistics
+- Example graph visualization
+- Semantic network visualization
+
+### Output
+
+```text
+reports/tables/
+reports/figures/
+```
+
+Keep generated outputs ignored if they are large, but document how to reproduce them.
+
+
+
+## Commit 13 — Strengthen Tests
+
+### Goal
+
+Improve reliability before final submission.
+
+### Implement Tests For
+
 - `document_loader.py`
 - `text_cleaning.py`
-
----
-
-# Commit 5 — Implement Information Extraction
-
-### Goals
-Extract structured information from documents.
-
-### Tasks
-- Named Entity Recognition
-- Keyword Extraction
-- Relation Extraction
-
-### Files
 - `entity_extraction.py`
 - `keyword_extraction.py`
 - `relation_extraction.py`
-
----
-
-# Commit 6 — Implement Semantic Retrieval
-
-### Goals
-Build document retrieval system.
-
-### Tasks
-- Implement BM25 retrieval
-- Implement embedding-based retrieval
-- Add semantic search
-- Add ranking system
-
-### Files
 - `bm25_retriever.py`
 - `embedding_retriever.py`
-
----
-
-# Commit 7 — Build Knowledge Graph
-
-### Goals
-Convert extracted information into graph structure.
-
-### Tasks
-- Create nodes
-- Create edges
-- Store graph
-- Implement graph queries
-
-### Files
 - `graph_builder.py`
-- `graph_queries.py`
+- `retrieval_metrics.py`
+- `run_pipeline.py`
 
----
+### Run
 
-# Commit 8 — Add Graph Visualization
+```bash
+pytest -v
+```
 
-### Goals
-Visualize knowledge graph structure.
 
-### Tasks
-- Create interactive graph visualization
-- Export graph images
-- Add network analysis
 
-### Files
-- `graph_visualization.py`
+## Commit 14 — Update README with Real Usage Instructions
 
----
+### Goal
 
-# Commit 9 — Implement Topic Modeling
+Make the project understandable and reproducible.
 
-### Goals
-Discover hidden themes in documents.
+### Update README Sections
 
-### Tasks
-- Implement LDA
-- Implement BERTopic
-- Create topic visualization
+- Project overview
+- Dataset download instructions
+- How to create the arXiv subset
+- How to run the pipeline
+- How to run retrieval experiments
+- How to run notebooks
+- How to run tests
+- How to start dashboard
+- Project structure
+- Known limitations
+- Future work
 
-### Files
-- `lda_model.py`
-- `bertopic_model.py`
 
----
 
-# Commit 10 — Add Embeddings & Semantic Networks
+## Commit 15 — Optional: Add GNN Dataset Builder
 
-### Goals
-Create semantic vector representations.
+### Goal
 
-### Tasks
-- Generate sentence embeddings
-- Create similarity matrices
-- Build semantic networks
+Start implementing the GNN part only after the graph pipeline is stable.
 
-### Files
-- `sentence_embeddings.py`
-- `network_embeddings.py`
+### Implement
 
----
+Update:
 
-# Commit 11 — Prepare Graph Dataset for GNNs
+```text
+src/gnn/dataset_builder.py
+```
 
-### Goals
-Convert graph into trainable graph dataset.
+It should:
 
-### Tasks
-- Create node features
-- Create graph splits
-- Prepare graph tensors
+- Load `knowledge_graph.graphml`
+- Map nodes to integer IDs
+- Create edge index
+- Create simple node features
+- Prepare a PyTorch Geometric dataset
 
-### Files
-- `dataset_builder.py`
 
----
 
-# Commit 12 — Implement Graph Neural Networks
+## Commit 16 — Optional: Add Basic GCN Model
 
-### Goals
-Train GNN models on graph data.
+### Goal
 
-### Tasks
-- Implement GCN
-- Train GNN model
-- Evaluate graph performance
+Add a simple GNN baseline.
 
-### Files
-- `gcn_model.py`
-- `train_gnn.py`
+### Implement
 
----
+Update:
 
-# Commit 13 — Integrate LLM + Knowledge Graph
+```text
+src/gnn/gcn_model.py
+src/gnn/train_gnn.py
+```
 
-### Goals
-Connect LLMs with graph retrieval.
+Possible tasks:
 
-### Tasks
-- Build Retrieval-Augmented Generation pipeline
-- Create graph-grounded QA
-- Add contextual retrieval
+- Node type classification
+- Link prediction
+- Graph embedding learning
 
-### Files
-- `graph_retrieval_qa.py`
-- `rag_pipeline.py`
 
----
 
-# Commit 14 — Add Bias Evaluation
+## Commit 17 — Optional: Add LLM + Knowledge Graph QA
 
-### Goals
-Analyze fairness and bias.
+### Goal
 
-### Tasks
-- Evaluate embedding bias
-- Analyze LLM bias
-- Create fairness metrics
+Add a lightweight LLM + KG module once retrieval is stable.
 
-### Files
-- `embedding_bias.py`
-- `llm_bias_eval.py`
+### Implement
 
----
+Update:
 
-# Commit 15 — Implement Debiasing
+```text
+src/llm_kg/graph_retrieval_qa.py
+src/llm_kg/rag_pipeline.py
+```
 
-### Goals
-Reduce harmful bias.
+Initial version can:
 
-### Tasks
-- Add embedding debiasing
-- Add prompt engineering
-- Compare before vs after
+- Retrieve relevant documents
+- Retrieve connected KG concepts
+- Build context
+- Generate or format an answer
 
-### Files
-- `debiasing.py`
+If no external LLM API is used, implement a local context-building QA stub first.
 
----
 
-# Commit 16 — Add Dashboard & Visualizations
 
-### Goals
-Create user interface and analytics dashboard.
+## Commit 18 — Optional: Add Bias Analysis
 
-### Tasks
-- Build Streamlit dashboard
-- Add graph visualizations
-- Add topic visualization
-- Add semantic search UI
+### Goal
 
-### Files
-- `dashboard.py`
-- `plots.py`
+Implement bias and debiasing only after the core project is complete.
 
----
+### Implement
 
-# Commit 17 — Add Tests & Refactoring
+Update:
 
-### Goals
-Improve reliability and code quality.
+```text
+src/bias/embedding_bias.py
+src/bias/llm_bias_eval.py
+src/bias/debiasing.py
+notebooks/05_bias_analysis.ipynb
+```
+
+Suggested focus:
+
+- Bias in scientific embeddings
+- Gendered word associations
+- Topic/domain imbalance
+- Prompt-based bias inspection
+
+
+
+## Commit 19 — Final Cleanup
+
+### Goal
+
+Prepare the repository for final submission.
 
 ### Tasks
-- Add unit tests
-- Refactor duplicated code
-- Improve documentation
-- Improve comments
+
+- Clear notebook outputs
+- Remove temporary files
+- Verify `.gitignore`
+- Run tests
+- Run pipeline on small subset
+- Verify README commands
+- Check no datasets are committed
+- Check no generated reports are committed unless intentionally included
+
+### Commands
+
+```bash
+pytest -v
+
+jupyter nbconvert --clear-output --inplace notebooks/01_data_exploration.ipynb notebooks/02_information_extraction.ipynb notebooks/03_topic_modeling.ipynb notebooks/04_embeddings_networks.ipynb notebooks/07_retrieval_evaluation.ipynb
+
+git status
+git ls-files data
+git ls-files reports
+```
+
+
+
+## Priority Plan
+
+If time is limited, focus only on these milestones:
+
+1. Scalable arXiv subset generation
+2. Memory-safe dataset loading
+3. Retrieval evaluation metrics
+4. BM25 baseline experiment
+5. Semantic retrieval experiment
+6. KG-enhanced retrieval
+7. Retrieval comparison notebook
+8. README update
+9. Final cleanup
+
+These directly answer the project proposal and research question.
+
+The GNN, LLM + KG, and bias modules are valuable extensions, but they should not distract from the core scientific document retrieval and knowledge graph evaluation workflow.
 
 ---
 
-# Commit 18 — Final Report & Documentation
+## Expected Deliverables
 
-### Goals
-Prepare final submission.
-
-### Tasks
-- Add final report
-- Add figures
-- Finalize README
-- Add presentation materials
-
----
-
-# Commit 19 — Final Submission
-
-### Goals
-Prepare clean final repository.
-
-### Tasks
-- Final cleanup
-- Verify notebooks
-- Verify documentation
-- Verify repository structure
-
----
-
-# Expected Deliverables
-
-By the end of the project:
+By the end of the project, the repository should include:
 
 - Complete GitHub repository
-- NLP preprocessing pipeline
+- Scientific document preprocessing pipeline
 - Information extraction system
 - Knowledge graph construction
+- BM25 retrieval baseline
 - Semantic retrieval system
+- Knowledge graph-enhanced retrieval
+- Retrieval evaluation metrics
 - Topic modeling analysis
-- Embedding and network analysis
-- Graph Neural Network experiments
-- LLM + KG integration
-- Bias evaluation framework
-- Debiasing experiments
-- Interactive dashboard
-- Final report and presentation
+- Embedding and semantic network analysis
+- Final notebooks and visualizations
+- Optional GNN experiments
+- Optional LLM + KG integration
+- Optional bias evaluation framework
+- Final report and presentation materials
 
 ---
 
-# Future Improvements
+## Future Improvements
 
 Possible extensions include:
 
@@ -1123,15 +1357,13 @@ Possible extensions include:
 - Conversational graph assistants
 - Scientific recommendation systems
 - Explainable graph reasoning
+- Stronger entity linking
+- Hybrid retrieval with BM25 + dense retrieval + graph reranking
 
 ---
 
-# Conclusion
+## Conclusion
 
 This project combines several advanced NLP and AI research areas into one unified knowledge discovery platform.
 
-It demonstrates how:
-- unstructured text can become structured knowledge,
-- semantic retrieval improves information access,
-- graph learning enables reasoning over relationships,
-- and responsible AI methods help evaluate fairness and bias in modern NLP systems.
+It demonstrates how unstructured scientific text can be transformed into structured knowledge, how semantic retrieval can improve information access, how graph-based methods can support relationship discovery, and how responsible AI methods can be added to evaluate fairness and bias in modern NLP systems.
