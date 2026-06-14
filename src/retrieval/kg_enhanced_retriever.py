@@ -15,8 +15,6 @@ import re
 from dataclasses import dataclass
 from typing import Dict, Iterable, List, Mapping, MutableMapping, Sequence, Tuple
 
-from src.retrieval.bm25_retriever import RetrievalResult
-
 _TOKEN_RE = re.compile(r"[a-zA-Z][a-zA-Z0-9.+#-]*")
 _STOPWORDS = {
     "a",
@@ -42,15 +40,17 @@ _STOPWORDS = {
 }
 
 _TOPIC_ALIASES = {
-    "cs ai": ("artificial intelligence", "ai"),
-    "cs cl": (
+    # ``_normalize_label`` preserves dots, so GraphML topic labels such as
+    # ``cs.AI`` normalize to ``cs.ai`` rather than ``cs ai``.
+    "cs.ai": ("artificial intelligence", "ai"),
+    "cs.cl": (
         "computational linguistics",
         "natural language processing",
         "nlp",
         "language model",
     ),
-    "cs ir": ("information retrieval", "search", "retrieval"),
-    "cs lg": ("machine learning", "ml", "deep learning"),
+    "cs.ir": ("information retrieval", "search", "retrieval"),
+    "cs.lg": ("machine learning", "ml", "deep learning"),
 }
 
 _NODE_TYPE_WEIGHTS = {
@@ -309,7 +309,6 @@ class KnowledgeGraphEnhancedRetriever:
 
     def match_query_nodes(self, query: str) -> List[str]:
         """Return graph feature nodes whose labels are supported by the query."""
-        query_label = _normalize_label(query)
         query_tokens = _tokens(query)
         matches: List[Tuple[float, str]] = []
 
@@ -320,9 +319,7 @@ class KnowledgeGraphEnhancedRetriever:
                 continue
 
             score = 0.0
-            if label and len(label) >= 3 and label in query_label:
-                score = 1.0
-            elif label_tokens.issubset(query_tokens):
+            if label_tokens.issubset(query_tokens):
                 score = 0.95
             else:
                 overlap = len(label_tokens & query_tokens)
@@ -331,9 +328,8 @@ class KnowledgeGraphEnhancedRetriever:
 
             if node_type == "TOPIC":
                 for alias in _TOPIC_ALIASES.get(label, ()):
-                    alias_label = _normalize_label(alias)
                     alias_tokens = _tokens(alias)
-                    if alias_label in query_label or alias_tokens.issubset(query_tokens):
+                    if alias_tokens and alias_tokens.issubset(query_tokens):
                         score = max(score, 0.9)
 
             if score > 0.0:

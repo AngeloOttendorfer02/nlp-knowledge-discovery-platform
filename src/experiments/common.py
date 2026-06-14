@@ -28,12 +28,17 @@ def load_documents(path: str | Path) -> pd.DataFrame:
             "Run the NLP pipeline first."
         )
 
-    frame = pd.read_csv(source)
+    # Keep arXiv identifiers byte-for-byte (for example ``0704.0001``).
+    # Without an explicit string dtype, pandas may parse numeric-looking IDs as
+    # floats, remove leading zeros, or truncate trailing zeros.
+    frame = pd.read_csv(source, dtype={"doc_id": "string"})
     if "doc_id" not in frame.columns:
         raise ValueError(f"{source} must contain a 'doc_id' column")
 
     frame = frame.copy()
-    frame["doc_id"] = frame["doc_id"].astype(str)
+    frame["doc_id"] = frame["doc_id"].fillna("").astype(str).str.strip()
+    if (frame["doc_id"] == "").any():
+        raise ValueError(f"{source} contains empty document IDs")
     if frame["doc_id"].duplicated().any():
         duplicates = frame.loc[frame["doc_id"].duplicated(), "doc_id"].tolist()
         raise ValueError(f"Duplicate document IDs are not allowed: {duplicates[:5]}")
@@ -98,7 +103,9 @@ def load_evaluation_queries(path: str | Path) -> List[EvaluationQuery]:
                 f"Evaluation query '{query_id}' must contain at least one relevant_doc_id"
             )
 
-        relevant_ids = frozenset(str(doc_id) for doc_id in relevant if str(doc_id).strip())
+        relevant_ids = frozenset(
+            str(doc_id).strip() for doc_id in relevant if str(doc_id).strip()
+        )
         if not relevant_ids:
             raise ValueError(
                 f"Evaluation query '{query_id}' must contain non-empty relevant_doc_ids"
@@ -120,17 +127,20 @@ def validate_relevance_against_corpus(
     queries: Sequence[EvaluationQuery],
     corpus_doc_ids: Iterable[str],
 ) -> None:
-    """Fail early when a query has no judged relevant document in the corpus."""
-    corpus = {str(doc_id) for doc_id in corpus_doc_ids}
-    invalid = [
-        query.query_id
+    """Fail early when any judged relevant document is absent from the corpus."""
+    corpus = {str(doc_id).strip() for doc_id in corpus_doc_ids}
+    missing_by_query = {
+        query.query_id: sorted(query.relevant_doc_ids.difference(corpus))
         for query in queries
-        if not query.relevant_doc_ids.intersection(corpus)
-    ]
-    if invalid:
+        if query.relevant_doc_ids.difference(corpus)
+    }
+    if missing_by_query:
+        details = "; ".join(
+            f"{query_id}: {', '.join(missing_ids[:5])}"
+            for query_id, missing_ids in missing_by_query.items()
+        )
         raise ValueError(
-            "These queries have no relevant document present in the corpus: "
-            + ", ".join(invalid)
+            "Relevant document IDs missing from the corpus: " + details
         )
 
 

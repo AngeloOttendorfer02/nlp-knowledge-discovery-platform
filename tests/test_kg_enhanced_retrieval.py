@@ -153,3 +153,39 @@ def test_kg_experiment_runner_writes_outputs(tmp_path):
     assert "graph_evidence" in results.columns
     assert metrics["k"].tolist() == [1, 2]
     assert metrics.loc[metrics["k"] == 1, "precision_at_k"].iloc[0] == 1.0
+
+
+def test_arxiv_topic_alias_matches_natural_language_query():
+    graph = nx.MultiDiGraph()
+    graph.add_node("paper::d1", node_type="PAPER", label="AI Paper")
+    graph.add_node("topic::cs.AI", node_type="TOPIC", label="cs.AI")
+    graph.add_edge(
+        "paper::d1",
+        "topic::cs.AI",
+        relation="BELONGS_TO_TOPIC",
+        weight=1,
+    )
+
+    retriever = KnowledgeGraphEnhancedRetriever(FakeBaseRetriever(), graph)
+
+    matches = retriever.match_query_nodes("artificial intelligence methods")
+
+    assert "topic::cs.AI" in matches
+
+
+def test_short_topic_alias_does_not_match_inside_another_word():
+    graph = nx.MultiDiGraph()
+    graph.add_node("paper::d1", node_type="PAPER", label="AI Paper")
+    graph.add_node("topic::cs.AI", node_type="TOPIC", label="cs.AI")
+    graph.add_edge(
+        "paper::d1",
+        "topic::cs.AI",
+        relation="BELONGS_TO_TOPIC",
+        weight=1,
+    )
+
+    retriever = KnowledgeGraphEnhancedRetriever(FakeBaseRetriever(), graph)
+
+    matches = retriever.match_query_nodes("training methods")
+
+    assert "topic::cs.AI" not in matches

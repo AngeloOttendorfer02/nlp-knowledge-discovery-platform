@@ -6,6 +6,11 @@ import numpy as np
 import pandas as pd
 
 import src.retrieval.embedding_retriever as embedding_module
+from src.experiments.common import (
+    EvaluationQuery,
+    load_documents,
+    validate_relevance_against_corpus,
+)
 from src.experiments.run_semantic_retrieval import run_semantic_experiment
 from src.retrieval.embedding_retriever import EmbeddingRetriever
 
@@ -135,3 +140,34 @@ def test_semantic_experiment_writes_rankings_and_metrics(tmp_path, monkeypatch):
     assert metrics["method"].unique().tolist() == ["semantic"]
     assert metrics["k"].tolist() == [1, 2]
     assert metrics.loc[metrics["k"] == 1, "precision_at_k"].iloc[0] == 1.0
+
+
+def test_document_loader_preserves_arxiv_ids(tmp_path):
+    documents_path = tmp_path / "processed_documents.csv"
+    documents_path.write_text(
+        "doc_id,title,abstract\n"
+        "0704.0001,First paper,First abstract\n"
+        "0704.0010,Second paper,Second abstract\n",
+        encoding="utf-8",
+    )
+
+    documents = load_documents(documents_path)
+
+    assert documents["doc_id"].tolist() == ["0704.0001", "0704.0010"]
+
+
+def test_relevance_validation_rejects_any_missing_document():
+    queries = [
+        EvaluationQuery(
+            query_id="q1",
+            query="graph retrieval",
+            relevant_doc_ids=frozenset({"d1", "missing"}),
+        )
+    ]
+
+    try:
+        validate_relevance_against_corpus(queries, ["d1", "d2"])
+    except ValueError as exc:
+        assert "missing" in str(exc)
+    else:
+        raise AssertionError("Expected missing relevant IDs to raise ValueError")
