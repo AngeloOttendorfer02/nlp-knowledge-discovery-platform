@@ -132,20 +132,23 @@ def load_arxiv_jsonl(
     seed: int = 42,
 ) -> pd.DataFrame:
     """
-    Load the arXiv metadata from a JSON-lines file (one JSON object per line).
+    Load arXiv metadata from a JSON-lines file in a memory-safe way.
 
-    This is the format of the official arXiv Kaggle dump.
+    The file is streamed line by line. Category filtering is applied while
+    reading, and loading stops once sample_size matching records have been
+    collected. This avoids loading the complete arXiv metadata dump into memory.
 
     Parameters
     ----------
     path : str
         Path to the .json / .jsonl file.
     sample_size : int, optional
-        If given, randomly sample this many rows (after category filtering).
+        If given, stop after this many matching records have been collected.
     categories : list of str, optional
         Keep only papers whose category list intersects this set.
     seed : int
-        Random seed used when sampling.
+        Kept for API compatibility. Streaming mode keeps the first matching
+        records instead of randomly sampling.
 
     Returns
     -------
@@ -155,25 +158,42 @@ def load_arxiv_jsonl(
     if not os.path.isfile(path):
         raise FileNotFoundError(f"arXiv JSONL not found: {path}")
 
+    wanted = set(categories) if categories else None
     records: List[Dict] = []
+
     with open(path, "r", encoding="utf-8") as handle:
         for line in handle:
             line = line.strip()
-            if line:
-                records.append(json.loads(line))
+
+            if not line:
+                continue
+
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+
+            record_categories = _split_categories(record.get("categories", ""))
+
+            if wanted is not None and not wanted.intersection(record_categories):
+                continue
+
+            records.append(
+                {
+                    "id": record.get("id", ""),
+                    "title": record.get("title", ""),
+                    "abstract": record.get("abstract", ""),
+                    "authors": record.get("authors", ""),
+                    "categories": " ".join(record_categories),
+                    "update_date": record.get("update_date", ""),
+                }
+            )
+
+            if sample_size is not None and len(records) >= sample_size:
+                break
 
     df = pd.DataFrame(records)
-    df = _standardize_dataframe(df)
-
-    if categories:
-        wanted = set(categories)
-        mask = df["categories"].apply(lambda cats: bool(wanted.intersection(cats)))
-        df = df[mask].reset_index(drop=True)
-
-    if sample_size is not None and sample_size < len(df):
-        df = df.sample(n=sample_size, random_state=seed).reset_index(drop=True)
-
-    return df
+    return _standardize_dataframe(df)
 
 
 def load_pdf(path: str) -> str:
