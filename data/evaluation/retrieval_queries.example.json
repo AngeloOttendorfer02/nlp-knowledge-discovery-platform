@@ -1,0 +1,52 @@
+[
+  {
+    "query_id": "q1",
+    "query": "graph neural networks scientific document retrieval",
+    "relevant_doc_ids": ["1"]
+  },
+  {
+    "query_id": "q2",
+    "query": "semantic retrieval scientific papers",
+    "relevant_doc_ids": ["1"]
+  },
+  {
+    "query_id": "q3",
+    "query": "information extraction transformer models",
+    "relevant_doc_ids": ["2"]
+  },
+  {
+    "query_id": "q4",
+    "query": "named entity recognition relation extraction",
+    "relevant_doc_ids": ["2"]
+  },
+  {
+    "query_id": "q5",
+    "query": "document retrieval with graph neural networks",
+    "relevant_doc_ids": ["1"]
+  },
+  {
+    "query_id": "q6",
+    "query": "BERT transformer entity recognition",
+    "relevant_doc_ids": ["2"]
+  },
+  {
+    "query_id": "q7",
+    "query": "scientific paper search using semantic methods",
+    "relevant_doc_ids": ["1"]
+  },
+  {
+    "query_id": "q8",
+    "query": "relation extraction from text",
+    "relevant_doc_ids": ["2"]
+  },
+  {
+    "query_id": "q9",
+    "query": "graph based scientific document retrieval",
+    "relevant_doc_ids": ["1"]
+  },
+  {
+    "query_id": "q10",
+    "query": "transformer models for NLP extraction",
+    "relevant_doc_ids": ["2"]
+  }
+]
