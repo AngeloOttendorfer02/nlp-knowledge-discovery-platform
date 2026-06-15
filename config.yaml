@@ -71,6 +71,10 @@ retrieval:
 knowledge_graph:
   min_edge_weight: 1            # drop edges weaker than this
   max_nodes_visualize: 150      # cap nodes in interactive visualisation
+  retrieval_weight: 0.75        # base BM25/semantic contribution in KG reranking
+  graph_weight: 0.25            # knowledge-graph contribution in KG reranking
+  candidate_multiplier: 3       # retrieve top_k * multiplier before reranking
+  expansion_weight: 0.5         # discount for one-hop concept evidence
 
 # ------------------------------------------------------------
 # Topic modeling
