@@ -28,17 +28,17 @@ def load_documents(path: str | Path) -> pd.DataFrame:
             "Run the NLP pipeline first."
         )
 
-    # Keep arXiv identifiers byte-for-byte (for example ``0704.0001``).
-    # Without an explicit string dtype, pandas may parse numeric-looking IDs as
-    # floats, remove leading zeros, or truncate trailing zeros.
     frame = pd.read_csv(source, dtype={"doc_id": "string"})
+
     if "doc_id" not in frame.columns:
         raise ValueError(f"{source} must contain a 'doc_id' column")
 
     frame = frame.copy()
     frame["doc_id"] = frame["doc_id"].fillna("").astype(str).str.strip()
+
     if (frame["doc_id"] == "").any():
         raise ValueError(f"{source} contains empty document IDs")
+
     if frame["doc_id"].duplicated().any():
         duplicates = frame.loc[frame["doc_id"].duplicated(), "doc_id"].tolist()
         raise ValueError(f"Duplicate document IDs are not allowed: {duplicates[:5]}")
@@ -48,6 +48,7 @@ def load_documents(path: str | Path) -> pd.DataFrame:
             raise ValueError(
                 f"{source} must contain either 'text' or both 'title' and 'abstract'"
             )
+
         frame["text"] = (
             frame["title"].fillna("").astype(str).str.strip()
             + ". "
@@ -58,6 +59,7 @@ def load_documents(path: str | Path) -> pd.DataFrame:
 
     if frame.empty:
         raise ValueError(f"{source} contains no documents")
+
     if not frame["text"].str.strip().any():
         raise ValueError(f"{source} contains no non-empty document text")
 
@@ -65,7 +67,7 @@ def load_documents(path: str | Path) -> pd.DataFrame:
 
 
 def load_evaluation_queries(path: str | Path) -> List[EvaluationQuery]:
-    """Load the roadmap-compatible relevance JSON format."""
+    """Load retrieval evaluation queries from JSON."""
     source = Path(path)
     if not source.exists():
         raise FileNotFoundError(
@@ -78,8 +80,11 @@ def load_evaluation_queries(path: str | Path) -> List[EvaluationQuery]:
 
     if isinstance(payload, dict):
         payload = payload.get("queries")
+
     if not isinstance(payload, list) or not payload:
-        raise ValueError("Evaluation JSON must be a non-empty list or {'queries': [...]} object")
+        raise ValueError(
+            "Evaluation JSON must be a non-empty list or {'queries': [...]} object"
+        )
 
     queries: List[EvaluationQuery] = []
     seen_ids = set()
@@ -94,10 +99,13 @@ def load_evaluation_queries(path: str | Path) -> List[EvaluationQuery]:
 
         if not query:
             raise ValueError(f"Evaluation query #{index} has an empty 'query'")
+
         if not query_id:
             raise ValueError(f"Evaluation query #{index} has an empty 'query_id'")
+
         if query_id in seen_ids:
             raise ValueError(f"Duplicate query_id: {query_id}")
+
         if not isinstance(relevant, list) or not relevant:
             raise ValueError(
                 f"Evaluation query '{query_id}' must contain at least one relevant_doc_id"
@@ -106,6 +114,7 @@ def load_evaluation_queries(path: str | Path) -> List[EvaluationQuery]:
         relevant_ids = frozenset(
             str(doc_id).strip() for doc_id in relevant if str(doc_id).strip()
         )
+
         if not relevant_ids:
             raise ValueError(
                 f"Evaluation query '{query_id}' must contain non-empty relevant_doc_ids"
@@ -129,28 +138,31 @@ def validate_relevance_against_corpus(
 ) -> None:
     """Fail early when any judged relevant document is absent from the corpus."""
     corpus = {str(doc_id).strip() for doc_id in corpus_doc_ids}
+
     missing_by_query = {
         query.query_id: sorted(query.relevant_doc_ids.difference(corpus))
         for query in queries
         if query.relevant_doc_ids.difference(corpus)
     }
+
     if missing_by_query:
         details = "; ".join(
             f"{query_id}: {', '.join(missing_ids[:5])}"
             for query_id, missing_ids in missing_by_query.items()
         )
-        raise ValueError(
-            "Relevant document IDs missing from the corpus: " + details
-        )
+        raise ValueError("Relevant document IDs missing from the corpus: " + details)
 
 
 def normalize_top_ks(values: Sequence[int]) -> List[int]:
     """Validate and deduplicate top-k values while preserving sorted order."""
     if not values:
         raise ValueError("At least one top-k value is required")
+
     top_ks = sorted({int(value) for value in values})
+
     if top_ks[0] <= 0:
         raise ValueError("All top-k values must be positive")
+
     return top_ks
 
 
@@ -163,23 +175,21 @@ def evaluate_rankings(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Build ranked-result and summary-metric tables.
-
-    The canonical functions from ``src.evaluation.retrieval_metrics`` are used
-    when Duong's evaluation PR is present. A mathematically equivalent local
-    fallback keeps this PR independently testable before that merge.
     """
     precision_at_k, recall_at_k, mean_reciprocal_rank = _metric_functions()
     top_ks = normalize_top_ks(top_ks)
 
     result_rows: List[Dict[str, object]] = []
-    retrieved_per_query: List[List[str]] = []
-    relevance_sets: List[set[str]] = []
+
+    retrieved_per_query: Dict[str, List[str]] = {}
+    relevance_sets: Dict[str, set[str]] = {}
 
     for query in queries:
         hits = list(rankings.get(query.query_id, []))
         retrieved_ids = [str(hit.doc_id) for hit in hits]
-        retrieved_per_query.append(retrieved_ids)
-        relevance_sets.append(set(query.relevant_doc_ids))
+
+        retrieved_per_query[query.query_id] = retrieved_ids
+        relevance_sets[query.query_id] = set(query.relevant_doc_ids)
 
         for hit in hits:
             row: Dict[str, object] = {
@@ -210,12 +220,16 @@ def evaluate_rankings(
             result_rows.append(row)
 
     mrr = float(mean_reciprocal_rank(retrieved_per_query, relevance_sets))
+
     metric_rows: List[Dict[str, object]] = []
 
     for k in top_ks:
         per_query_precision = []
         per_query_recall = []
-        for retrieved_ids, relevant_ids in zip(retrieved_per_query, relevance_sets):
+
+        for query_id, retrieved_ids in retrieved_per_query.items():
+            relevant_ids = relevance_sets[query_id]
+
             per_query_precision.append(
                 float(precision_at_k(retrieved_ids, relevant_ids, k))
             )
@@ -225,8 +239,16 @@ def evaluate_rankings(
             {
                 "method": method,
                 "k": k,
-                "precision_at_k": sum(per_query_precision) / len(per_query_precision),
-                "recall_at_k": sum(per_query_recall) / len(per_query_recall),
+                "precision_at_k": (
+                    sum(per_query_precision) / len(per_query_precision)
+                    if per_query_precision
+                    else 0.0
+                ),
+                "recall_at_k": (
+                    sum(per_query_recall) / len(per_query_recall)
+                    if per_query_recall
+                    else 0.0
+                ),
                 "mrr": mrr,
                 "num_queries": len(queries),
             }
@@ -246,10 +268,13 @@ def write_experiment_outputs(
     """Write deterministic CSV outputs and return their paths."""
     target = Path(output_dir)
     target.mkdir(parents=True, exist_ok=True)
+
     result_path = target / result_filename
     metric_path = target / metric_filename
+
     results.to_csv(result_path, index=False)
     metrics.to_csv(metric_path, index=False)
+
     return result_path, metric_path
 
 
@@ -265,35 +290,46 @@ def _metric_functions():
     except ModuleNotFoundError as exc:
         if exc.name not in {"src.evaluation", "src.evaluation.retrieval_metrics"}:
             raise
+
         return _precision_at_k, _recall_at_k, _mean_reciprocal_rank
 
 
 def _precision_at_k(retrieved_ids, relevant_ids, k):
     if k <= 0:
         raise ValueError("k must be positive")
+
     retrieved = list(retrieved_ids)[:k]
     relevant = set(relevant_ids)
+
     return sum(doc_id in relevant for doc_id in retrieved) / k
 
 
 def _recall_at_k(retrieved_ids, relevant_ids, k):
     if k <= 0:
         raise ValueError("k must be positive")
+
     relevant = set(relevant_ids)
+
     if not relevant:
         return 0.0
+
     retrieved = set(list(retrieved_ids)[:k])
+
     return len(retrieved.intersection(relevant)) / len(relevant)
 
 
 def _mean_reciprocal_rank(results, relevance_sets):
     reciprocal_ranks = []
-    for retrieved_ids, relevant_ids in zip(results, relevance_sets):
-        relevant = set(relevant_ids)
+
+    for query_id, retrieved_ids in results.items():
+        relevant = set(relevance_sets.get(query_id, []))
         reciprocal_rank = 0.0
+
         for rank, doc_id in enumerate(retrieved_ids, start=1):
             if doc_id in relevant:
                 reciprocal_rank = 1.0 / rank
                 break
+
         reciprocal_ranks.append(reciprocal_rank)
+
     return sum(reciprocal_ranks) / len(reciprocal_ranks) if reciprocal_ranks else 0.0
