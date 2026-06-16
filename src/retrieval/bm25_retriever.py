@@ -13,6 +13,8 @@ Built on the ``rank-bm25`` library.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
+from collections import Counter
 from typing import Callable, List, Optional, Sequence
 
 from src.preprocessing.text_cleaning import preprocess
@@ -86,8 +88,6 @@ class BM25Retriever:
         BM25Retriever
             The indexed retriever (for chaining).
         """
-        from rank_bm25 import BM25Okapi
-
         if len(doc_ids) != len(texts):
             raise ValueError("doc_ids and texts must have the same length")
 
@@ -95,7 +95,12 @@ class BM25Retriever:
         self._doc_texts = list(texts)
 
         tokenized_corpus = [self._tokenizer(text) for text in texts]
-        self._bm25 = BM25Okapi(tokenized_corpus, k1=self.k1, b=self.b)
+        try:
+            from rank_bm25 import BM25Okapi
+
+            self._bm25 = BM25Okapi(tokenized_corpus, k1=self.k1, b=self.b)
+        except ModuleNotFoundError:
+            self._bm25 = _SimpleBM25Okapi(tokenized_corpus, k1=self.k1, b=self.b)
         return self
 
     def search(self, query: str, top_k: int = 10) -> List[RetrievalResult]:
@@ -134,3 +139,56 @@ class BM25Retriever:
                 )
             )
         return results
+
+
+class _SimpleBM25Okapi:
+    """Small BM25 fallback used when the optional rank-bm25 package is absent."""
+
+    def __init__(
+        self,
+        tokenized_corpus: Sequence[Sequence[str]],
+        *,
+        k1: float = 1.5,
+        b: float = 0.75,
+    ) -> None:
+        self.k1 = k1
+        self.b = b
+        self._doc_freqs = [Counter(document) for document in tokenized_corpus]
+        self._doc_lengths = [len(document) for document in tokenized_corpus]
+        self._avg_doc_length = (
+            sum(self._doc_lengths) / len(self._doc_lengths)
+            if self._doc_lengths
+            else 0.0
+        )
+        self._idf = self._compute_idf()
+
+    def get_scores(self, query_tokens: Sequence[str]) -> List[float]:
+        scores: List[float] = []
+        for frequencies, doc_length in zip(self._doc_freqs, self._doc_lengths):
+            score = 0.0
+            for token in query_tokens:
+                frequency = frequencies.get(token, 0)
+                if frequency == 0:
+                    continue
+
+                denominator = frequency + self.k1 * (
+                    1.0
+                    - self.b
+                    + self.b * doc_length / (self._avg_doc_length or 1.0)
+                )
+                score += self._idf.get(token, 0.0) * (
+                    frequency * (self.k1 + 1.0)
+                ) / denominator
+            scores.append(score)
+        return scores
+
+    def _compute_idf(self) -> dict[str, float]:
+        document_count = len(self._doc_freqs)
+        document_frequency: Counter[str] = Counter()
+        for frequencies in self._doc_freqs:
+            document_frequency.update(frequencies.keys())
+
+        return {
+            token: math.log(1.0 + (document_count - freq + 0.5) / (freq + 0.5))
+            for token, freq in document_frequency.items()
+        }

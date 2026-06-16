@@ -25,6 +25,26 @@ _URL_RE = re.compile(r"https?://\S+|www\.\S+")
 _HTML_RE = re.compile(r"<[^>]+>")
 _NON_ALPHA_RE = re.compile(r"[^a-zA-Z\s]")
 _MULTISPACE_RE = re.compile(r"\s+")
+_BASIC_STOPWORDS = {
+    "a",
+    "an",
+    "and",
+    "are",
+    "as",
+    "at",
+    "be",
+    "by",
+    "for",
+    "from",
+    "in",
+    "is",
+    "of",
+    "on",
+    "or",
+    "the",
+    "to",
+    "with",
+}
 
 
 @lru_cache(maxsize=2)
@@ -130,7 +150,15 @@ def preprocess(
     if not cleaned:
         return []
 
-    nlp = _load_spacy(spacy_model)
+    try:
+        nlp = _load_spacy(spacy_model)
+    except (ModuleNotFoundError, OSError):
+        return _preprocess_without_spacy(
+            cleaned,
+            remove_stopwords=remove_stopwords,
+            min_token_length=min_token_length,
+        )
+
     doc = nlp(cleaned)
 
     tokens: List[str] = []
@@ -143,6 +171,22 @@ def preprocess(
         if len(word) >= min_token_length and word.isalpha():
             tokens.append(word)
 
+    return tokens
+
+
+def _preprocess_without_spacy(
+    cleaned_text: str,
+    *,
+    remove_stopwords: bool,
+    min_token_length: int,
+) -> List[str]:
+    """Fallback tokenizer for environments without spaCy or its model."""
+    tokens = []
+    for word in cleaned_text.split():
+        if remove_stopwords and word in _BASIC_STOPWORDS:
+            continue
+        if len(word) >= min_token_length and word.isalpha():
+            tokens.append(word)
     return tokens
 
 
