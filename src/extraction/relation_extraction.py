@@ -22,6 +22,7 @@ from collections import Counter
 from dataclasses import dataclass
 from functools import lru_cache
 from itertools import combinations
+import re
 from typing import List, Optional, Sequence
 
 from src.extraction.entity_extraction import Entity
@@ -86,7 +87,10 @@ class CooccurrenceRelationExtractor:
     ) -> None:
         self.window = max(1, window)
         self.relation_label = relation_label
-        self._nlp = _load_spacy(spacy_model)
+        try:
+            self._nlp = _load_spacy(spacy_model)
+        except (ModuleNotFoundError, OSError):
+            self._nlp = None
 
     def extract(self, text: str, entities: Sequence[Entity]) -> List[Relation]:
         """
@@ -107,8 +111,11 @@ class CooccurrenceRelationExtractor:
         if not entities or not text.strip():
             return []
 
-        doc = self._nlp(text)
-        sentences = list(doc.sents)
+        if self._nlp is None:
+            sentences = _simple_sentences(text)
+        else:
+            doc = self._nlp(text)
+            sentences = [sentence.text for sentence in doc.sents]
         entity_surfaces = {e.text.lower(): e.text for e in entities}
 
         pair_counts: Counter = Counter()
@@ -116,7 +123,7 @@ class CooccurrenceRelationExtractor:
         # Slide a window over the sentences and record co-occurring entities
         for start in range(len(sentences)):
             window_text = " ".join(
-                s.text for s in sentences[start : start + self.window]
+                sentences[start : start + self.window]
             ).lower()
 
             present = sorted(
@@ -224,3 +231,9 @@ def aggregate_relations(relations: Sequence[Relation]) -> List[Relation]:
         for (s, r, t), w in counter.items()
     ]
     return sorted(merged, key=lambda rel: rel.weight, reverse=True)
+
+
+def _simple_sentences(text: str) -> List[str]:
+    """Fallback sentence splitter used when spaCy's model is unavailable."""
+    sentences = [part.strip() for part in re.split(r"[.!?]+", text) if part.strip()]
+    return sentences or [text]

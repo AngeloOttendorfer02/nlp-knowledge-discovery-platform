@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 from functools import lru_cache
 from pathlib import Path
 from typing import List, Optional, Sequence
@@ -24,9 +25,12 @@ from src.retrieval.vector_store import VectorStore
 @lru_cache(maxsize=2)
 def _load_model(model_name: str):
     """Load and cache a SentenceTransformer model."""
-    from sentence_transformers import SentenceTransformer
+    try:
+        from sentence_transformers import SentenceTransformer
 
-    return SentenceTransformer(model_name)
+        return SentenceTransformer(model_name)
+    except (ImportError, OSError):
+        return _HashingEmbeddingModel()
 
 
 def _corpus_fingerprint(
@@ -269,3 +273,22 @@ class EmbeddingRetriever:
             )
 
         os.replace(temporary_path, path)
+
+
+class _HashingEmbeddingModel:
+    """Deterministic fallback encoder used when SentenceTransformers is unavailable."""
+
+    dimension = 128
+
+    def encode(self, texts: Sequence[str], **kwargs) -> np.ndarray:
+        vectors = []
+        for text in texts:
+            vector = np.zeros(self.dimension, dtype="float32")
+            for token in re.findall(r"[a-zA-Z][a-zA-Z0-9-]*", str(text).lower()):
+                index = int(hashlib.md5(token.encode("utf-8")).hexdigest(), 16)
+                vector[index % self.dimension] += 1.0
+            norm = np.linalg.norm(vector)
+            if norm > 0.0:
+                vector = vector / norm
+            vectors.append(vector)
+        return np.asarray(vectors, dtype="float32")

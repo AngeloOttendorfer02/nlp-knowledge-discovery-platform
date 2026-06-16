@@ -39,10 +39,15 @@ class VectorStore:
     """
 
     def __init__(self, dim: int) -> None:
-        import faiss
-
         self.dim = dim
-        self._index = faiss.IndexFlatIP(dim)
+        try:
+            import faiss
+
+            self._index = faiss.IndexFlatIP(dim)
+            self._vectors = None
+        except ModuleNotFoundError:
+            self._index = None
+            self._vectors = np.empty((0, dim), dtype="float32")
         self._doc_ids: List[str] = []
 
     @staticmethod
@@ -69,7 +74,11 @@ class VectorStore:
         if len(doc_ids) != embeddings.shape[0]:
             raise ValueError("doc_ids and embeddings must have matching lengths")
 
-        self._index.add(self._normalize(embeddings))
+        normalized = self._normalize(embeddings)
+        if self._index is not None:
+            self._index.add(normalized)
+        else:
+            self._vectors = np.vstack([self._vectors, normalized])
         self._doc_ids.extend(doc_ids)
 
     def search(self, query_embedding: np.ndarray, top_k: int = 10) -> List[VectorHit]:
@@ -88,16 +97,22 @@ class VectorStore:
         list of VectorHit
             Ranked hits, highest cosine similarity first.
         """
-        if self._index.ntotal == 0:
+        if len(self) == 0:
             return []
 
         query = np.asarray(query_embedding, dtype="float32").reshape(1, -1)
         query = self._normalize(query)
 
-        scores, indices = self._index.search(query, min(top_k, self._index.ntotal))
+        if self._index is not None:
+            scores, indices = self._index.search(query, min(top_k, len(self)))
+            ranked_pairs = list(zip(indices[0], scores[0]))
+        else:
+            scores = self._vectors @ query[0]
+            indices = np.argsort(scores)[::-1][: min(top_k, len(self))]
+            ranked_pairs = [(idx, scores[idx]) for idx in indices]
 
         hits: List[VectorHit] = []
-        for rank, (idx, score) in enumerate(zip(indices[0], scores[0]), start=1):
+        for rank, (idx, score) in enumerate(ranked_pairs, start=1):
             if idx == -1:  # FAISS uses -1 to pad when fewer than k results exist
                 continue
             hits.append(VectorHit(doc_id=self._doc_ids[idx], score=float(score), rank=rank))
@@ -105,7 +120,9 @@ class VectorStore:
 
     def __len__(self) -> int:
         """Number of vectors currently stored."""
-        return self._index.ntotal
+        if self._index is not None:
+            return self._index.ntotal
+        return int(self._vectors.shape[0])
 
     # ------------------------------------------------------------------
     # Persistence
@@ -120,12 +137,17 @@ class VectorStore:
         directory : str
             Target directory (created if it does not exist).
         """
-        import faiss
-
         os.makedirs(directory, exist_ok=True)
-        faiss.write_index(self._index, os.path.join(directory, "index.faiss"))
+        if self._index is not None:
+            import faiss
+
+            faiss.write_index(self._index, os.path.join(directory, "index.faiss"))
+            backend = "faiss"
+        else:
+            np.save(os.path.join(directory, "index.npy"), self._vectors)
+            backend = "numpy"
         with open(os.path.join(directory, "doc_ids.json"), "w", encoding="utf-8") as handle:
-            json.dump({"dim": self.dim, "doc_ids": self._doc_ids}, handle)
+            json.dump({"dim": self.dim, "doc_ids": self._doc_ids, "backend": backend}, handle)
 
     @classmethod
     def load(cls, directory: str) -> "VectorStore":
@@ -142,12 +164,17 @@ class VectorStore:
         VectorStore
             The restored store.
         """
-        import faiss
-
         with open(os.path.join(directory, "doc_ids.json"), "r", encoding="utf-8") as handle:
             meta = json.load(handle)
 
         store = cls(dim=meta["dim"])
-        store._index = faiss.read_index(os.path.join(directory, "index.faiss"))
+        if meta.get("backend") == "numpy":
+            store._index = None
+            store._vectors = np.load(os.path.join(directory, "index.npy"))
+        else:
+            import faiss
+
+            store._index = faiss.read_index(os.path.join(directory, "index.faiss"))
+            store._vectors = None
         store._doc_ids = list(meta["doc_ids"])
         return store

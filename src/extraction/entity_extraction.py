@@ -16,7 +16,18 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass
 from functools import lru_cache
+import re
 from typing import Dict, List, Optional
+
+_CONCEPT_RE = re.compile(
+    r"\b(?:knowledge graph|semantic search|semantic retrieval|question answering|"
+    r"explainable ai|graph neural network|graph neural networks|link prediction|"
+    r"citation network|citation networks|language model|language models|"
+    r"embedding space|embedding spaces|bias evaluation|debiasing|topic modeling|"
+    r"scientific document|scientific documents|literature review|"
+    r"retrieval augmented generation|structured knowledge)\b",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True)
@@ -75,7 +86,10 @@ class EntityExtractor:
     ) -> None:
         self.spacy_model = spacy_model
         self.entity_types = set(entity_types) if entity_types else None
-        self._nlp = _load_spacy(spacy_model)
+        try:
+            self._nlp = _load_spacy(spacy_model)
+        except (ModuleNotFoundError, OSError):
+            self._nlp = None
 
     def extract(self, text: str) -> List[Entity]:
         """
@@ -93,6 +107,8 @@ class EntityExtractor:
         """
         if not text or not text.strip():
             return []
+        if self._nlp is None:
+            return _extract_rule_based_concepts(text)
 
         doc = self._nlp(text)
         seen = set()
@@ -127,6 +143,9 @@ class EntityExtractor:
         list of list of Entity
             One entity list per input document.
         """
+        if self._nlp is None:
+            return [_extract_rule_based_concepts(text) for text in texts]
+
         results: List[List[Entity]] = []
         for doc in self._nlp.pipe(texts, batch_size=batch_size):
             seen = set()
@@ -173,3 +192,24 @@ class EntityExtractor:
             for entity in doc_entities:
                 counter[(entity.text, entity.label)] += 1
         return counter.most_common(top_n)
+
+
+def _extract_rule_based_concepts(text: str) -> List[Entity]:
+    """Extract project-relevant scientific concepts without a spaCy model."""
+    seen = set()
+    entities: List[Entity] = []
+    for match in _CONCEPT_RE.finditer(text or ""):
+        surface = match.group(0).strip()
+        key = surface.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        entities.append(
+            Entity(
+                text=surface,
+                label="CONCEPT",
+                start=match.start(),
+                end=match.end(),
+            )
+        )
+    return entities

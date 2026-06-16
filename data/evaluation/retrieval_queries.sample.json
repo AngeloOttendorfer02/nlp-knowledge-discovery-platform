@@ -1,0 +1,27 @@
+[
+  {
+    "query_id": "sample-q1",
+    "query": "knowledge graph semantic search scientific discovery",
+    "relevant_doc_ids": ["sample-001"]
+  },
+  {
+    "query_id": "sample-q2",
+    "query": "graph neural networks link prediction citation networks",
+    "relevant_doc_ids": ["sample-002"]
+  },
+  {
+    "query_id": "sample-q3",
+    "query": "bias analysis language model embeddings debiasing",
+    "relevant_doc_ids": ["sample-003"]
+  },
+  {
+    "query_id": "sample-q4",
+    "query": "topic modeling research trend analysis literature review",
+    "relevant_doc_ids": ["sample-004"]
+  },
+  {
+    "query_id": "sample-q5",
+    "query": "retrieval augmented generation structured knowledge",
+    "relevant_doc_ids": ["sample-005"]
+  }
+]

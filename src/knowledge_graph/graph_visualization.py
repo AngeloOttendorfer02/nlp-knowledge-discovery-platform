@@ -72,7 +72,18 @@ def visualize_interactive(
     str
         The path to the written HTML file.
     """
-    from pyvis.network import Network
+    try:
+        from pyvis.network import Network
+    except ModuleNotFoundError:
+        os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+        with open(output_path, "w", encoding="utf-8") as handle:
+            handle.write(
+                "<!doctype html><html><body>"
+                "<h1>Knowledge Graph Visualization</h1>"
+                "<p>Install pyvis to render the interactive graph.</p>"
+                "</body></html>"
+            )
+        return output_path
 
     subgraph = _limit_graph(graph, max_nodes)
     net = Network(height=height, width="100%", directed=True, notebook=False)
