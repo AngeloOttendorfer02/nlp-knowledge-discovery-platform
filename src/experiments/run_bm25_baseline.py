@@ -26,14 +26,15 @@ def load_processed_documents(path: Path) -> pd.DataFrame:
             "    python -m src.pipeline.run_pipeline --skip-embeddings"
         )
 
-    df = pd.read_csv(path)
+    df = pd.read_csv(path, dtype={"doc_id": "string"})
+
     required_columns = {"doc_id", "text"}
     missing = required_columns.difference(df.columns)
 
     if missing:
         raise ValueError(f"Missing required columns: {missing}")
 
-    df["doc_id"] = df["doc_id"].astype(str)
+    df["doc_id"] = df["doc_id"].fillna("").astype(str).str.strip()
     df["text"] = df["text"].fillna("").astype(str)
 
     return df
@@ -56,6 +57,11 @@ def load_relevance_queries(path: Path) -> List[Dict[str, Any]]:
             raise ValueError("Every query must have a query text.")
         if not query.get("relevant_doc_ids"):
             raise ValueError("Every query must have at least one relevant document.")
+
+        query["relevant_doc_ids"] = [
+            str(doc_id).strip()
+            for doc_id in query["relevant_doc_ids"]
+        ]
 
     return queries
 
