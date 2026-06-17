@@ -12,6 +12,10 @@ Fast first run:
 Run with the real arXiv Kaggle metadata file:
 
     python -m src.pipeline.run_pipeline --input data/raw/arxiv-metadata-oai-snapshot.json --skip-embeddings
+
+Run the full project workflow including retrieval experiments:
+
+    python -m src.pipeline.run_pipeline --skip-embeddings --full
 """
 
 from __future__ import annotations
@@ -52,7 +56,7 @@ def load_config(path: str = "config.yaml") -> Dict[str, Any]:
         raise FileNotFoundError(f"Config file not found: {config_path}")
 
     with config_path.open("r", encoding="utf-8") as file:
-        return yaml.safe_load(file)
+        return yaml.safe_load(file) or {}
 
 
 def ensure_directories(config: Dict[str, Any]) -> Dict[str, Path]:
@@ -64,6 +68,8 @@ def ensure_directories(config: Dict[str, Any]) -> Dict[str, Path]:
         "graphs": Path(paths.get("data_graphs", "data/graphs")),
         "reports": Path(paths.get("reports", "reports")),
         "figures": Path(paths.get("figures", "reports/figures")),
+        "tables": Path("reports/tables"),
+        "evaluation": Path("data/evaluation"),
     }
 
     for directory in directories.values():
@@ -211,11 +217,182 @@ def save_json(data: Any, path: Path) -> None:
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
+def create_local_relevance_queries(
+    processed_documents_path: Path,
+    output_path: Path,
+    num_queries: int = 10,
+) -> Path:
+    """Create a reproducible local silver-standard relevance file.
+
+    The generated queries are derived from each selected document's own title and
+    abstract. This makes the file useful as a reproducibility benchmark while
+    still using real corpus IDs.
+
+    For the final report, this can later be replaced by a manually curated
+    relevance file.
+    """
+    if not processed_documents_path.exists():
+        raise FileNotFoundError(
+            f"Processed documents not found: {processed_documents_path}"
+        )
+
+    df = pd.read_csv(
+        processed_documents_path,
+        dtype={"doc_id": "string"},
+    )
+
+    required_columns = {"doc_id", "title", "abstract", "text"}
+    missing = required_columns.difference(df.columns)
+
+    if missing:
+        raise ValueError(
+            f"processed_documents.csv is missing required columns: {missing}"
+        )
+
+    df = df.copy()
+    df["doc_id"] = df["doc_id"].fillna("").astype(str).str.strip()
+    df["title"] = df["title"].fillna("").astype(str).str.strip()
+    df["abstract"] = df["abstract"].fillna("").astype(str).str.strip()
+    df["text"] = df["text"].fillna("").astype(str).str.strip()
+
+    candidates = df[
+        (df["doc_id"] != "")
+        & (df["title"].str.len() >= 20)
+        & (df["abstract"].str.len() >= 100)
+    ].copy()
+
+    if candidates.empty:
+        raise ValueError(
+            "Could not create local relevance queries because no suitable "
+            "documents with title and abstract were found."
+        )
+
+    candidates = candidates.head(num_queries)
+
+    queries = []
+
+    for index, (_, row) in enumerate(candidates.iterrows(), start=1):
+        abstract_terms = " ".join(row["abstract"].split()[:25])
+        query_text = f"{row['title']} {abstract_terms}".strip()
+
+        queries.append(
+            {
+                "query_id": f"q{index}",
+                "query": query_text,
+                "relevant_doc_ids": [row["doc_id"]],
+            }
+        )
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with output_path.open("w", encoding="utf-8") as file:
+        json.dump(
+            queries,
+            file,
+            indent=2,
+            ensure_ascii=False,
+        )
+
+    print(f"Saved local relevance queries to {output_path}")
+
+    return output_path
+    
+
+def run_retrieval_experiments(
+    documents_path: Path,
+    queries_path: Path,
+    graph_path: Path,
+    output_dir: Path,
+) -> None:
+    """Run all retrieval benchmarks after the core pipeline."""
+    if not documents_path.exists():
+        raise FileNotFoundError(f"Missing processed documents: {documents_path}")
+
+    if not queries_path.exists():
+        raise FileNotFoundError(f"Missing evaluation queries: {queries_path}")
+
+    if not graph_path.exists():
+        raise FileNotFoundError(f"Missing knowledge graph: {graph_path}")
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    config = load_config()
+    retrieval_cfg = config.get("retrieval", {})
+    embeddings_cfg = config.get("embeddings", {})
+    kg_cfg = config.get("knowledge_graph", {})
+
+    top_k = int(retrieval_cfg.get("top_k", 10))
+    top_ks = sorted({5, top_k})
+
+    from src.experiments.run_bm25_baseline import run_bm25_baseline
+    from src.experiments.run_semantic_retrieval import run_semantic_experiment
+    from src.experiments.run_kg_enhanced_retrieval import run_kg_enhanced_experiment
+
+    print("Running BM25 baseline experiment...")
+
+    run_bm25_baseline(
+        documents_path=documents_path,
+        queries_path=queries_path,
+        output_dir=output_dir,
+        bm25_k1=float(retrieval_cfg.get("bm25_k1", 1.5)),
+        bm25_b=float(retrieval_cfg.get("bm25_b", 0.75)),
+        top_ks=top_ks,
+    )
+
+    print("Running semantic retrieval experiment...")
+
+    run_semantic_experiment(
+        documents_path=documents_path,
+        queries_path=queries_path,
+        output_dir=output_dir,
+        model_name=str(
+            retrieval_cfg.get(
+                "embedding_model",
+                embeddings_cfg.get("model", "all-MiniLM-L6-v2"),
+            )
+        ),
+        batch_size=int(embeddings_cfg.get("batch_size", 32)),
+        top_ks=top_ks,
+        cache_path="artifacts/semantic_retrieval/document_embeddings.npz",
+        force_recompute=False,
+    )
+
+    print("Running knowledge graph-enhanced retrieval experiment...")
+
+    run_kg_enhanced_experiment(
+        documents_path=documents_path,
+        queries_path=queries_path,
+        graph_path=graph_path,
+        output_dir=output_dir,
+        base_method="semantic",
+        model_name=str(
+            retrieval_cfg.get(
+                "embedding_model",
+                embeddings_cfg.get("model", "all-MiniLM-L6-v2"),
+            )
+        ),
+        batch_size=int(embeddings_cfg.get("batch_size", 32)),
+        bm25_k1=float(retrieval_cfg.get("bm25_k1", 1.5)),
+        bm25_b=float(retrieval_cfg.get("bm25_b", 0.75)),
+        top_ks=top_ks,
+        retrieval_weight=float(kg_cfg.get("retrieval_weight", 0.75)),
+        graph_weight=float(kg_cfg.get("graph_weight", 0.25)),
+        candidate_multiplier=int(kg_cfg.get("candidate_multiplier", 3)),
+        expansion_weight=float(kg_cfg.get("expansion_weight", 0.5)),
+        keywords_path="data/processed/keywords.csv",
+        keyword_top_n=int(config.get("extraction", {}).get("keyword_top_n", 10)),
+        cache_path="artifacts/semantic_retrieval/document_embeddings.npz",
+        force_recompute=False,
+    )
+
+    print("All retrieval experiments completed successfully.")
+
+
 def run_pipeline(
     input_path: Optional[str] = None,
     query: str = "knowledge graphs and language models",
     skip_embeddings: bool = False,
-) -> None:
+) -> Dict[str, Path]:
     print("Starting NLP Knowledge Discovery Pipeline...")
 
     config = load_config()
@@ -499,6 +676,18 @@ def run_pipeline(
 
     print("Pipeline completed successfully.")
 
+    return {
+        "processed_documents": processed_path,
+        "entities": entities_path,
+        "keywords": keywords_path,
+        "relations": relations_path,
+        "knowledge_graph_graphml": graphml_path,
+        "knowledge_graph_json": graph_json_path,
+        "knowledge_graph_html": graph_html_path,
+        "reports_tables": directories["tables"],
+        "evaluation_dir": directories["evaluation"],
+    }
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -525,17 +714,66 @@ def parse_args() -> argparse.Namespace:
         help="Skip embedding and semantic-network creation for a faster first run.",
     )
 
+    parser.add_argument(
+        "--full",
+        action="store_true",
+        help="Run the full workflow: core pipeline, auto queries, and all retrieval experiments.",
+    )
+
+    parser.add_argument(
+        "--run-experiments",
+        action="store_true",
+        help="Run BM25, semantic, and KG-enhanced retrieval experiments after the pipeline.",
+    )
+
+    parser.add_argument(
+        "--auto-create-queries",
+        action="store_true",
+        help="Create local evaluation queries from the processed documents.",
+    )
+
+    parser.add_argument(
+        "--num-auto-queries",
+        type=int,
+        default=10,
+        help="Number of local relevance queries to create automatically.",
+    )
+
+    parser.add_argument(
+        "--queries",
+        type=str,
+        default="data/evaluation/local_retrieval_queries.json",
+        help="Path to the evaluation query JSON file.",
+    )
+
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
 
-    run_pipeline(
+    outputs = run_pipeline(
         input_path=args.input,
         query=args.query,
         skip_embeddings=args.skip_embeddings,
     )
+
+    queries_path = Path(args.queries)
+
+    if args.full or args.auto_create_queries:
+        create_local_relevance_queries(
+            processed_documents_path=outputs["processed_documents"],
+            output_path=queries_path,
+            num_queries=args.num_auto_queries,
+        )
+
+    if args.full or args.run_experiments:
+        run_retrieval_experiments(
+            documents_path=outputs["processed_documents"],
+            queries_path=queries_path,
+            graph_path=outputs["knowledge_graph_graphml"],
+            output_dir=outputs["reports_tables"],
+        )
 
 
 if __name__ == "__main__":

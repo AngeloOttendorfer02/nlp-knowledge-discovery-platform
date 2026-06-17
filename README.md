@@ -1,370 +1,172 @@
 # NLP Knowledge Discovery Platform
 
-> AI-powered scientific knowledge discovery system using Natural Language Processing, semantic retrieval, knowledge graphs, embeddings, graph analytics, and optional extensions with Graph Neural Networks and Large Language Models.
-
----
-
-## Project Description
-
-The **NLP Knowledge Discovery Platform** is a research-oriented Natural Language Processing project for scientific document exploration.
-
-Scientific and technical documents contain large amounts of valuable information, but this information is usually stored in unstructured text. Traditional keyword-based search can retrieve documents that contain matching terms, but it often fails to capture deeper semantic relationships between concepts, methods, datasets, authors, research topics, and related papers.
-
-This project investigates how Natural Language Processing methods can transform unstructured scientific text into structured knowledge and support better information retrieval through semantic retrieval and knowledge graphs.
-
-The central research question is:
-
-> **Can a knowledge graph built from scientific texts improve semantic search and knowledge discovery compared to traditional keyword-based retrieval?**
-
-The platform is designed to process scientific papers, especially arXiv metadata containing titles, abstracts, authors, categories, and publication metadata. It extracts structured information, builds a knowledge graph, creates semantic embeddings, performs retrieval experiments, and supports exploratory analysis through notebooks and visualizations.
-
----
-
-## Main Objectives
-
-The project aims to:
-
-- Build a complete NLP processing pipeline for scientific documents
-- Load and preprocess arXiv-style scientific metadata
-- Extract entities, keywords, and relations from titles and abstracts
-- Construct and analyze a scientific knowledge graph
-- Implement keyword-based retrieval using BM25
-- Implement semantic retrieval using Sentence Transformers
-- Compare retrieval methods using evaluation metrics
-- Explore document collections through topic modeling
-- Build semantic similarity networks from document embeddings
-- Prepare the project for optional GNN, LLM + KG, and bias analysis extensions
-- Provide reproducible notebooks, tests, and documentation
-
----
-
-## Topics Covered
-
-### Information Extraction & Retrieval
-
-This module converts raw scientific text into structured and searchable information.
-
-Implemented and planned features include:
-
-- Named Entity Recognition
-- Keyword Extraction
-- Relation Extraction
-- BM25 Retrieval
-- Embedding-based Semantic Retrieval
-- Document Ranking
-- Retrieval Evaluation
-
-Main technologies:
-
-- spaCy
-- rank-bm25
-- Sentence Transformers
-- Hugging Face Transformers
-
----
-
-### Knowledge Graphs
-
-The knowledge graph module transforms extracted information into graph structures.
-
-Example node types:
-
-- Papers
-- Authors
-- Topics
-- Concepts
-- Methods
-- Datasets
-
-Example relationship types:
-
-- `AUTHORED_BY`
-- `BELONGS_TO_TOPIC`
-- `MENTIONS`
-- `RELATED_TO`
-- `USES_METHOD`
-
-Implemented and planned features include:
-
-- Graph construction
-- Graph export to JSON and GraphML
-- Graph querying
-- Graph visualization
-- Graph statistics and centrality analysis
-- Knowledge graph-enhanced retrieval
-
-Main technologies:
-
-- NetworkX
-- PyVis
-- GraphML / JSON graph export
-
----
-
-### Topic Modeling
-
-Topic modeling is used to discover hidden research themes inside a document collection.
-
-Implemented and planned methods:
-
-- Latent Dirichlet Allocation
-- BERTopic
-- Topic summaries
-- Topic visualization
-- Topic interpretation
-
----
-
-### Embeddings & Semantic Networks
-
-The embedding module creates semantic vector representations of scientific documents.
-
-Implemented and planned features:
-
-- Sentence embeddings
-- Document embeddings
-- Semantic similarity matrices
-- Semantic similarity networks
-- Embedding-based retrieval
-- Document similarity analysis
-
----
-
-### Graph Neural Networks
-
-Graph Neural Networks are planned as an optional extension after the knowledge graph and retrieval pipeline are stable.
-
-Possible tasks:
-
-- Node classification
-- Link prediction
-- Graph embedding learning
-- Graph-based recommendation
-
-Possible methods:
-
-- GCN
-- GraphSAGE
-- GAT
-
----
-
-### Large Language Models + Knowledge Graphs
-
-LLM + KG integration is planned as an optional extension.
-
-Possible features:
-
-- Graph-grounded question answering
-- Retrieval-Augmented Generation
-- Context construction from documents and graph neighborhoods
-- Evidence-based scientific summaries
-- Hallucination reduction through structured context
-
----
-
-### Bias and Debiasing in NLP
-
-Bias analysis is planned as an optional extension.
-
-Possible analysis areas:
-
-- Bias in embeddings
-- Bias in scientific document representations
-- Domain imbalance
-- Prompt-based bias evaluation
-- Debiasing strategies
-
----
-
-## Proposed Architecture
-
-```text
-Scientific Documents / arXiv Metadata
-              |
-              v
-      Text Loading & Cleaning
-              |
-              v
-       NLP Preprocessing
-              |
-              v
- Information Extraction Pipeline
-              |
-      +-------+--------+
-      |                |
-      v                v
-Knowledge Graph   Embedding Store
-      |                |
-      v                v
-Graph Analysis   Semantic Retrieval
-      |                |
-      +-------+--------+
-              |
-              v
- Retrieval Evaluation / Comparison
-              |
-              v
-Notebooks / Dashboard / Final Report
-```
-
----
-
-## Repository Structure
-
-```text
-nlp-knowledge-discovery-platform/
-│
-├── README.md
-├── requirements.txt
-├── config.yaml
-├── .gitignore
-│
-├── data/
-│   ├── raw/
-│   ├── processed/
-│   └── graphs/
-│
-├── notebooks/
-│   ├── 01_data_exploration.ipynb
-│   ├── 02_information_extraction.ipynb
-│   ├── 03_topic_modeling.ipynb
-│   ├── 04_embeddings_networks.ipynb
-│   ├── 05_bias_analysis.ipynb
-│   └── 06_gnn_experiments.ipynb
-│
-├── src/
-│   ├── preprocessing/
-│   ├── extraction/
-│   ├── retrieval/
-│   ├── knowledge_graph/
-│   ├── topic_modeling/
-│   ├── embeddings/
-│   ├── pipeline/
-│   ├── utils/
-│   ├── gnn/
-│   ├── llm_kg/
-│   ├── bias/
-│   └── visualization/
-│
-├── reports/
-│   └── figures/
-│
-└── tests/
-```
-
----
-
-## Current Project Status
-
-### Already Implemented
-
-The current project already includes:
-
-- Project configuration via `config.yaml`
-- Central path and configuration utilities in `src/utils/`
-- Document loading for CSV, JSON, and JSONL arXiv metadata
-- Text preprocessing and cleaning
-- Named Entity Recognition
-- Keyword extraction
-- Relation extraction
-- BM25 retrieval module
-- Embedding retrieval module
-- Vector store module
-- Knowledge graph construction
-- Knowledge graph querying
-- Knowledge graph visualization
-- LDA topic modeling
-- BERTopic wrapper
-- Sentence embeddings
-- Semantic network construction
-- End-to-end pipeline entry point
-- Analytical notebooks 01–04
-- Placeholder notebooks for bias and GNN experiments
-- Initial test structure
-
-### Still Missing or Incomplete
-
-The following parts are still missing or incomplete:
-
-- Scalable arXiv subset generation
-- Memory-efficient full arXiv JSON loading
-- Retrieval evaluation metrics
-- Manual relevance evaluation dataset
-- BM25 vs semantic retrieval comparison
-- Knowledge graph-enhanced retrieval
-- End-to-end experiment runners
-- Dashboard or final analysis interface
-- Final report figures and tables
-- Comprehensive tests for all modules
-- GNN implementation
-- LLM + Knowledge Graph integration
-- Bias and debiasing implementation
-
----
-
-## Installation
-
-### Clone Repository
+A professional research platform for scientific document discovery using NLP, semantic retrieval, knowledge graphs, and interactive visualization.
+
+## Overview
+
+This repository builds a reproducible pipeline for processing arXiv-style scientific metadata. It combines:
+
+- text preprocessing and entity extraction
+- keyword extraction and relation discovery
+- knowledge graph construction and export
+- BM25 and semantic retrieval comparisons
+- topic modeling and embedding analysis
+- interactive dashboard exploration
+
+The project is designed for research, experimentation, and prototype evaluation of document-level knowledge discovery.
+
+## What is implemented
+
+- Data loading from CSV, JSON, and JSONL arXiv-style metadata
+- Text cleaning and preprocessing with spaCy
+- Named entity extraction and keyword extraction
+- Co-occurrence relation extraction
+- Knowledge graph construction and export to GraphML / JSON
+- BM25 retrieval baseline implementation
+- Semantic retrieval using Sentence Transformers
+- Knowledge graph-enhanced retrieval reranking
+- Retrieval evaluation metrics and experiment runners
+- LDA topic modeling and BERTopic wrapper support
+- Document embedding generation and semantic similarity network construction
+- Interactive Streamlit dashboard with search, topic views, clustering, and graph exploration
+- Convenience runner via `python -m run_all`
+- Automated tests for pipeline and retrieval components
+
+## What still needs to be implemented
+
+- richer node and edge typing in the knowledge graph
+- more robust relation extraction beyond co-occurrence
+- full retrieval ground-truth dataset and evaluation annotations
+- expanded topic modeling visualizations and interpretability tools
+- production-ready dataset sampling and persistence workflows
+- optional GNN experiments for node/link prediction
+- optional Graph + LLM integration for KG-grounded QA
+- optional bias evaluation and debiasing analysis
+
+## Getting started
+
+### 1. Clone the repository
 
 ```bash
 git clone https://github.com/AngeloOttendorfer02/nlp-knowledge-discovery-platform.git
 cd nlp-knowledge-discovery-platform
 ```
 
-### Create Conda Environment
+### 2. Create a virtual environment
 
 ```bash
-conda create -n nlp-kg python=3.10
-conda activate nlp-kg
-```
-
-### Install Dependencies
-
-```bash
-pip install --upgrade pip
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### Download spaCy Model
+### 3. Download the spaCy model
 
 ```bash
 python -m spacy download en_core_web_sm
 ```
 
----
-
-## Recommended Python Version
-
-Use **Python 3.10 or Python 3.11** for best compatibility with the NLP and machine learning ecosystem.
-
-Avoid very new Python versions such as Python 3.13 or Python 3.14 unless all dependencies have been verified manually, because some NLP and ML packages may not provide stable wheels for the newest Python versions yet.
-
-Check your Python version:
+### 4. Run the pipeline
 
 ```bash
-python --version
+python -m src.pipeline.run_pipeline
 ```
 
----
-
-## Required Data and Output Folders
-
-The repository expects the following folders to exist:
+### 5. Start the dashboard
 
 ```bash
-mkdir -p data/raw data/processed data/graphs reports/figures
+streamlit run src/visualization/dashboard.py
 ```
 
-On Windows PowerShell:
+## Convenience commands
 
-```powershell
-New-Item -ItemType Directory -Force data/raw, data/processed, data/graphs, reports/figures
+- Run only the pipeline:
+
+```bash
+python -m src.pipeline.run_pipeline --skip-embeddings
 ```
 
-Purpose of these folders:
+- Create local evaluation queries:
 
-- `data/raw/` — original input data, for example arXiv metadata
+```bash
+python -m src.pipeline.run_pipeline --auto-create-queries --num-auto-queries 5
+```
+
+- Run experiments after pipeline:
+
+```bash
+python -m src.pipeline.run_pipeline --run-experiments --queries data/evaluation/local_retrieval_queries.json
+```
+
+- Use the wrapper for a common workflow:
+
+```bash
+python -m run_all --run-experiments --auto-create-queries --start-dashboard
+```
+
+- Run tests:
+
+```bash
+python -m pytest -q
+```
+
+## Recommended Python version
+
+Use Python 3.10 or 3.11.
+
+## Project structure
+
+- `data/raw/` — raw input data
+- `data/processed/` — cleaned and intermediate outputs
+- `data/graphs/` — exported graphs and filtered subgraphs
+- `reports/tables/` — retrieval and evaluation results
+- `artifacts/` — saved embeddings and retrieval artifacts
+- `src/` — implementation modules
+- `tests/` — test suite
+
+## Dashboard capabilities
+
+The Streamlit dashboard provides:
+
+- BM25 search over processed documents
+- LDA topic visualization
+- topic-word embedding projection with nearest neighbors
+- document clustering from saved embeddings
+- interactive knowledge graph exploration and filtering
+- filtered graph save and node export
+
+## Data expectations
+
+The pipeline expects arXiv-like metadata fields such as:
+
+- `id`
+- `title`
+- `abstract`
+- `authors`
+- `categories`
+- `update_date`
+
+If no raw dataset is available, the pipeline can create a sample dataset automatically.
+
+## Notes
+
+- The project is research-oriented and not yet production hardened.
+- Large datasets and generated artifacts should not be committed to version control.
+- The dashboard and advanced visualization features are optional and depend on installed visualization packages.
+
+## How to contribute
+
+- Add dataset loaders and preprocessing enhancements
+- Improve graph extraction and KG modeling
+- Add retrieval evaluation datasets and benchmarks
+- Expand dashboard visualizations and user workflows
+- Add GNN, LLM, and bias analysis modules
+
+## Contact
+
+For implementation questions or project updates, inspect the `src/` modules and tests. Use the project structure to locate pipeline, extraction, retrieval, graph, and visualization code.
+
 - `data/processed/` — cleaned or transformed intermediate data
 - `data/graphs/` — exported knowledge graphs
 - `reports/figures/` — plots and visualizations generated during experiments
@@ -426,6 +228,32 @@ Run with embeddings enabled:
 python -m src.pipeline.run_pipeline --input data/raw/arxiv_cs_subset.csv
 ```
 
+Run the full workflow with auto query creation and retrieval experiments:
+
+```bash
+python -m src.pipeline.run_pipeline --full
+```
+
+Create local evaluation queries from processed documents:
+
+```bash
+python -m src.pipeline.run_pipeline --auto-create-queries --num-auto-queries 5
+```
+
+Run experiments after the pipeline using a prepared query file:
+
+```bash
+python -m src.pipeline.run_pipeline --run-experiments --queries data/evaluation/local_retrieval_queries.json
+```
+
+Direct experiment runners are also available:
+
+```bash
+python -m src.experiments.run_bm25_baseline
+python -m src.experiments.run_semantic_retrieval
+python -m src.experiments.run_kg_enhanced_retrieval
+```
+
 The pipeline generates outputs such as:
 
 ```text
@@ -438,7 +266,14 @@ data/processed/graph_summary.json
 data/processed/lda_topics.json
 data/graphs/knowledge_graph.graphml
 data/graphs/knowledge_graph.json
+data/graphs/semantic_network.graphml
 reports/figures/knowledge_graph.html
+reports/tables/bm25_results.csv
+reports/tables/bm25_metrics.csv
+reports/tables/semantic_results.csv
+reports/tables/semantic_metrics.csv
+reports/tables/kg_enhanced_results.csv
+reports/tables/kg_enhanced_metrics.csv
 ```
 
 ---
@@ -452,14 +287,9 @@ notebooks/01_data_exploration.ipynb
 notebooks/02_information_extraction.ipynb
 notebooks/03_topic_modeling.ipynb
 notebooks/04_embeddings_networks.ipynb
-```
-
-Planned or placeholder notebooks:
-
-```text
 notebooks/05_bias_analysis.ipynb
 notebooks/06_gnn_experiments.ipynb
-notebooks/07_retrieval_evaluation.ipynb
+notebooks/07_retrieval_evaluation_and_benchmarking.ipynb
 ```
 
 Recommended notebook workflow:
@@ -472,7 +302,7 @@ Recommended notebook workflow:
 Clear notebook outputs:
 
 ```bash
-jupyter nbconvert --clear-output --inplace notebooks/01_data_exploration.ipynb notebooks/02_information_extraction.ipynb notebooks/03_topic_modeling.ipynb notebooks/04_embeddings_networks.ipynb
+jupyter nbconvert --clear-output --inplace notebooks/01_data_exploration.ipynb notebooks/02_information_extraction.ipynb notebooks/03_topic_modeling.ipynb notebooks/04_embeddings_networks.ipynb notebooks/05_bias_analysis.ipynb notebooks/06_gnn_experiments.ipynb notebooks/07_retrieval_evaluation_and_benchmarking.ipynb
 ```
 
 ---
@@ -936,38 +766,7 @@ Add:
 
 
 
-## Commit 8 — Implement Knowledge Graph-Enhanced Retrieval
 
-### Goal
-
-Use graph structure to improve or explain retrieval results.
-
-This is central to the research question.
-
-### Implement
-
-Create:
-
-```text
-src/retrieval/kg_enhanced_retriever.py
-```
-
-Possible approach:
-
-1. Run BM25 or semantic retrieval
-2. Extract entities from the query
-3. Find related concepts in the knowledge graph
-4. Expand or rerank documents connected to those concepts
-5. Return final ranked documents
-
-Suggested class:
-
-```python
-class KGEnhancedRetriever:
-    def __init__(self, base_retriever, graph):
-        ...
-
-    def search(self, query: str, top_k: int = 10):
         ...
 ```
 

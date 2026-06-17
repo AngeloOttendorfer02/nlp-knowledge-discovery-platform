@@ -1,157 +1,143 @@
-"""
-Run a reproducible BM25 baseline retrieval experiment.
-
-Example:
-    python -m src.experiments.run_bm25_baseline
-"""
+"""Run a reproducible BM25 baseline retrieval experiment."""
 
 from __future__ import annotations
 
 import argparse
-import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Sequence
 
-import pandas as pd
+import yaml
 
-from src.evaluation.retrieval_metrics import evaluate_retrieval_run
+from src.experiments.common import (
+    evaluate_rankings,
+    load_documents,
+    load_evaluation_queries,
+    normalize_top_ks,
+    validate_relevance_against_corpus,
+    write_experiment_outputs,
+)
 from src.retrieval.bm25_retriever import BM25Retriever
 
 
-def load_processed_documents(path: Path) -> pd.DataFrame:
-    if not path.exists():
-        raise FileNotFoundError(
-            f"Processed documents not found: {path}\n"
-            "Run first:\n"
-            "    python -m src.pipeline.run_pipeline --skip-embeddings"
-        )
-
-    df = pd.read_csv(path)
-    required_columns = {"doc_id", "text"}
-    missing = required_columns.difference(df.columns)
-
-    if missing:
-        raise ValueError(f"Missing required columns: {missing}")
-
-    df["doc_id"] = df["doc_id"].astype(str)
-    df["text"] = df["text"].fillna("").astype(str)
-
-    return df
-
-
-def load_relevance_queries(path: Path) -> List[Dict[str, Any]]:
-    if not path.exists():
-        raise FileNotFoundError(f"Relevance query file not found: {path}")
-
-    with path.open("r", encoding="utf-8") as file:
-        queries = json.load(file)
-
-    if not isinstance(queries, list):
-        raise ValueError("Relevance query file must contain a list.")
-
-    for query in queries:
-        if not query.get("query_id"):
-            raise ValueError("Every query must have a query_id.")
-        if not query.get("query"):
-            raise ValueError("Every query must have a query text.")
-        if not query.get("relevant_doc_ids"):
-            raise ValueError("Every query must have at least one relevant document.")
-
-    return queries
-
-
 def run_bm25_baseline(
-    documents_path: Path,
-    queries_path: Path,
-    results_path: Path,
-    metrics_path: Path,
-    top_k: int = 5,
-) -> Dict[str, float]:
-    df = load_processed_documents(documents_path)
-    queries = load_relevance_queries(queries_path)
+    *,
+    documents_path: str | Path,
+    queries_path: str | Path,
+    output_dir: str | Path = "reports/tables",
+    bm25_k1: float = 1.5,
+    bm25_b: float = 0.75,
+    top_ks: Sequence[int] = (5, 10),
+):
+    """Execute BM25 retrieval and save ranked results plus summary metrics."""
+    top_ks = normalize_top_ks(top_ks)
 
-    doc_ids = df["doc_id"].tolist()
-    texts = df["text"].tolist()
+    documents = load_documents(documents_path)
+    queries = load_evaluation_queries(queries_path)
+    validate_relevance_against_corpus(queries, documents["doc_id"])
 
-    retriever = BM25Retriever()
+    doc_ids = documents["doc_id"].astype(str).tolist()
+    texts = documents["text"].fillna("").astype(str).tolist()
+
+    retriever = BM25Retriever(
+        k1=bm25_k1,
+        b=bm25_b,
+    )
     retriever.index(doc_ids, texts)
 
-    results_by_query: Dict[str, List[str]] = {}
-    relevance_sets: Dict[str, List[str]] = {}
-    result_rows: List[Dict[str, Any]] = []
+    retrieval_depth = max(top_ks)
+    rankings = {
+        query.query_id: retriever.search(query.query, top_k=retrieval_depth)
+        for query in queries
+    }
 
-    for query_item in queries:
-        query_id = str(query_item["query_id"])
-        query_text = str(query_item["query"])
-        relevant_doc_ids = [str(doc_id) for doc_id in query_item["relevant_doc_ids"]]
-        relevant_set = set(relevant_doc_ids)
-
-        hits = retriever.search(query_text, top_k=top_k)
-        retrieved_ids = [str(hit.doc_id) for hit in hits]
-
-        results_by_query[query_id] = retrieved_ids
-        relevance_sets[query_id] = relevant_doc_ids
-
-        for hit in hits:
-            result_rows.append(
-                {
-                    "query_id": query_id,
-                    "query": query_text,
-                    "rank": hit.rank,
-                    "doc_id": str(hit.doc_id),
-                    "score": hit.score,
-                    "is_relevant": str(hit.doc_id) in relevant_set,
-                    "text": hit.text,
-                }
-            )
-
-    metrics = evaluate_retrieval_run(
-        results=results_by_query,
-        relevance_sets=relevance_sets,
-        k=top_k,
+    results, metrics = evaluate_rankings(
+        method="bm25",
+        queries=queries,
+        rankings=rankings,
+        top_ks=top_ks,
     )
 
-    results_path.parent.mkdir(parents=True, exist_ok=True)
-    metrics_path.parent.mkdir(parents=True, exist_ok=True)
+    result_path, metric_path = write_experiment_outputs(
+        results,
+        metrics,
+        output_dir=output_dir,
+        result_filename="bm25_results.csv",
+        metric_filename="bm25_metrics.csv",
+    )
 
-    pd.DataFrame(result_rows).to_csv(results_path, index=False)
-    pd.DataFrame([{"method": "BM25", **metrics}]).to_csv(metrics_path, index=False)
+    return results, metrics, result_path, metric_path
 
-    print("BM25 baseline experiment completed.")
-    print(f"Results saved to: {results_path}")
-    print(f"Metrics saved to: {metrics_path}")
-    print(metrics)
 
-    return metrics
+def _config_defaults(config_path: str | Path) -> dict:
+    defaults = {
+        "top_k": 10,
+        "bm25_k1": 1.5,
+        "bm25_b": 0.75,
+    }
+
+    path = Path(config_path)
+
+    if not path.exists():
+        return defaults
+
+    with path.open("r", encoding="utf-8") as handle:
+        config = yaml.safe_load(handle) or {}
+
+    retrieval = config.get("retrieval", {})
+
+    defaults.update(
+        {
+            "top_k": retrieval.get("top_k", defaults["top_k"]),
+            "bm25_k1": retrieval.get("bm25_k1", defaults["bm25_k1"]),
+            "bm25_b": retrieval.get("bm25_b", defaults["bm25_b"]),
+        }
+    )
+
+    return defaults
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run BM25 baseline experiment.")
+    defaults = _config_defaults("config.yaml")
+
+    parser = argparse.ArgumentParser(
+        description="Evaluate BM25 keyword retrieval."
+    )
 
     parser.add_argument(
         "--documents",
-        type=Path,
-        default=Path("data/processed/processed_documents.csv"),
+        default="data/processed/processed_documents.csv",
+        help="Processed document CSV generated by the pipeline.",
     )
+
     parser.add_argument(
         "--queries",
-        type=Path,
-        default=Path("data/evaluation/retrieval_queries.example.json"),
+        default="data/evaluation/retrieval_queries.example.json",
+        help="Evaluation JSON containing query and relevant_doc_ids entries.",
     )
+
     parser.add_argument(
-        "--results",
-        type=Path,
-        default=Path("reports/tables/bm25_results.csv"),
+        "--output-dir",
+        default="reports/tables",
     )
+
     parser.add_argument(
-        "--metrics",
-        type=Path,
-        default=Path("reports/tables/bm25_metrics.csv"),
+        "--bm25-k1",
+        type=float,
+        default=defaults["bm25_k1"],
     )
+
+    parser.add_argument(
+        "--bm25-b",
+        type=float,
+        default=defaults["bm25_b"],
+    )
+
     parser.add_argument(
         "--top-k",
         type=int,
-        default=5,
+        nargs="+",
+        default=sorted({5, int(defaults["top_k"])}),
+        help="One or more cutoffs, for example: --top-k 5 10",
     )
 
     return parser.parse_args()
@@ -160,13 +146,18 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
-    run_bm25_baseline(
+    _, metrics, result_path, metric_path = run_bm25_baseline(
         documents_path=args.documents,
         queries_path=args.queries,
-        results_path=args.results,
-        metrics_path=args.metrics,
-        top_k=args.top_k,
+        output_dir=args.output_dir,
+        bm25_k1=args.bm25_k1,
+        bm25_b=args.bm25_b,
+        top_ks=args.top_k,
     )
+
+    print(f"BM25 ranked results: {result_path}")
+    print(f"BM25 summary metrics: {metric_path}")
+    print(metrics.to_string(index=False))
 
 
 if __name__ == "__main__":

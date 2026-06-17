@@ -22,6 +22,7 @@ class EvaluationQuery:
 def load_documents(path: str | Path) -> pd.DataFrame:
     """Load and validate processed documents for retrieval experiments."""
     source = Path(path)
+
     if not source.exists():
         raise FileNotFoundError(
             f"Processed document file not found: {source}. "
@@ -69,6 +70,7 @@ def load_documents(path: str | Path) -> pd.DataFrame:
 def load_evaluation_queries(path: str | Path) -> List[EvaluationQuery]:
     """Load retrieval evaluation queries from JSON."""
     source = Path(path)
+
     if not source.exists():
         raise FileNotFoundError(
             f"Evaluation query file not found: {source}. "
@@ -173,9 +175,7 @@ def evaluate_rankings(
     rankings: Mapping[str, Sequence[object]],
     top_ks: Sequence[int],
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """
-    Build ranked-result and summary-metric tables.
-    """
+    """Build ranked-result and summary-metric tables."""
     precision_at_k, recall_at_k, mean_reciprocal_rank = _metric_functions()
     top_ks = normalize_top_ks(top_ks)
 
@@ -233,7 +233,9 @@ def evaluate_rankings(
             per_query_precision.append(
                 float(precision_at_k(retrieved_ids, relevant_ids, k))
             )
-            per_query_recall.append(float(recall_at_k(retrieved_ids, relevant_ids, k)))
+            per_query_recall.append(
+                float(recall_at_k(retrieved_ids, relevant_ids, k))
+            )
 
         metric_rows.append(
             {
@@ -287,6 +289,7 @@ def _metric_functions():
         )
 
         return precision_at_k, recall_at_k, mean_reciprocal_rank
+
     except ModuleNotFoundError as exc:
         if exc.name not in {"src.evaluation", "src.evaluation.retrieval_metrics"}:
             raise
