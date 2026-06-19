@@ -1,0 +1,72 @@
+[
+  {
+    "query_id": "q1",
+    "query": "Intelligent location of simultaneously active acoustic emission sources:\n  Part I The intelligent acoustic emission locator is described in Part I, while Part II discusses blind source separation, time delay estimation and location of two simultaneously",
+    "relevant_doc_ids": [
+      "0704.0047"
+    ]
+  },
+  {
+    "query_id": "q2",
+    "query": "Intelligent location of simultaneously active acoustic emission sources:\n  Part II Part I describes an intelligent acoustic emission locator, while Part II discusses blind source separation, time delay estimation and location of two continuous acoustic emission",
+    "relevant_doc_ids": [
+      "0704.0050"
+    ]
+  },
+  {
+    "query_id": "q3",
+    "query": "The World as Evolving Information This paper discusses the benefits of describing the world as information, especially in the study of the evolution of life and cognition. Traditional studies encounter",
+    "relevant_doc_ids": [
+      "0704.0304"
+    ]
+  },
+  {
+    "query_id": "q4",
+    "query": "Learning from compressed observations The problem of statistical learning is to construct a predictor of a random variable $Y$ as a function of a related random variable $X$ on",
+    "relevant_doc_ids": [
+      "0704.0671"
+    ]
+  },
+  {
+    "query_id": "q5",
+    "query": "Sensor Networks with Random Links: Topology Design for Distributed\n  Consensus In a sensor network, in practice, the communication among sensors is subject to:(1) errors or failures at random times; (3) costs; and(2) constraints since sensors",
+    "relevant_doc_ids": [
+      "0704.0954"
+    ]
+  },
+  {
+    "query_id": "q6",
+    "query": "Architecture for Pseudo Acausal Evolvable Embedded Systems Advances in semiconductor technology are contributing to the increasing complexity in the design of embedded systems. Architectures with novel techniques such as evolvable nature and",
+    "relevant_doc_ids": [
+      "0704.0985"
+    ]
+  },
+  {
+    "query_id": "q7",
+    "query": "The on-line shortest path problem under partial monitoring The on-line shortest path problem is considered under various models of partial monitoring. Given a weighted directed acyclic graph whose edge weights can change in",
+    "relevant_doc_ids": [
+      "0704.1020"
+    ]
+  },
+  {
+    "query_id": "q8",
+    "query": "A neural network approach to ordinal regression Ordinal regression is an important type of learning, which has properties of both classification and regression. Here we describe a simple and effective approach to",
+    "relevant_doc_ids": [
+      "0704.1028"
+    ]
+  },
+  {
+    "query_id": "q9",
+    "query": "Novelty and Collective Attention The subject of collective attention is central to an information age where millions of people are inundated with daily messages. It is thus of interest",
+    "relevant_doc_ids": [
+      "0704.1158"
+    ]
+  },
+  {
+    "query_id": "q10",
+    "query": "Parametric Learning and Monte Carlo Optimization This paper uncovers and explores the close relationship between Monte Carlo Optimization of a parametrized integral (MCO), Parametric machine-Learning (PL), and `blackbox' or `oracle'-based optimization",
+    "relevant_doc_ids": [
+      "0704.1274"
+    ]
+  }
+]

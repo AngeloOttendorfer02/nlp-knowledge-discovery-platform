@@ -72,34 +72,54 @@ def visualize_interactive(
     str
         The path to the written HTML file.
     """
-    from pyvis.network import Network
-
     subgraph = _limit_graph(graph, max_nodes)
-    net = Network(height=height, width="100%", directed=True, notebook=False)
-
-    # Add nodes coloured and titled by their type
-    for node, data in subgraph.nodes(data=True):
-        node_type = data.get("node_type", "UNKNOWN")
-        label = data.get("label", str(node))
-        net.add_node(
-            node,
-            label=label,
-            color=_color_for(node_type),
-            title=f"{node_type}: {label}",
-        )
-
-    # Add edges labelled by their relation
-    for source, target, data in subgraph.edges(data=True):
-        net.add_edge(
-            source,
-            target,
-            title=data.get("relation", ""),
-            value=data.get("weight", 1),
-        )
-
-    net.force_atlas_2based()
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
-    net.write_html(output_path)
+
+    try:
+        from pyvis.network import Network
+
+        net = Network(height=height, width="100%", directed=True, notebook=False)
+        for node, data in subgraph.nodes(data=True):
+            node_type = data.get("node_type", "UNKNOWN")
+            label = data.get("label", str(node))
+            net.add_node(
+                node,
+                label=label,
+                color=_color_for(node_type),
+                title=f"{node_type}: {label}",
+            )
+        for source, target, data in subgraph.edges(data=True):
+            net.add_edge(
+                source,
+                target,
+                title=data.get("relation", ""),
+                value=data.get("weight", 1),
+            )
+        net.force_atlas_2based()
+        net.write_html(output_path)
+    except Exception:
+        # Dependency-light fallback: write a readable HTML summary when pyvis is
+        # not installed. The static PNG renderer remains available separately.
+        rows = []
+        for source, target, data in subgraph.edges(data=True):
+            rows.append(
+                f"<tr><td>{source}</td><td>{data.get('relation', '')}</td><td>{target}</td><td>{data.get('weight', 1)}</td></tr>"
+            )
+        html = (
+            "<!doctype html><html><head><meta charset='utf-8'><title>Knowledge Graph</title>"
+            "<style>body{font-family:Arial,sans-serif;margin:2rem}"
+            "table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:.35rem .5rem}"
+            "</style></head><body>"
+            "<h1>Knowledge Graph Summary</h1>"
+            "<p>Install <code>pyvis</code> for the interactive graph view. "
+            "This fallback lists graph edges.</p>"
+            "<table><thead><tr><th>Source</th><th>Relation</th><th>Target</th><th>Weight</th>"
+            "</tr></thead><tbody>"
+            + "\n".join(rows)
+            + "</tbody></table></body></html>"
+        )
+        with open(output_path, "w", encoding="utf-8") as handle:
+            handle.write(html)
     return output_path
 
 

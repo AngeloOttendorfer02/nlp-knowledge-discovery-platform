@@ -57,11 +57,10 @@ def _load_spacy(model_name: str):
 
     try:
         return spacy.load(model_name)
-    except OSError as exc:  # pragma: no cover - depends on local install
-        raise OSError(
-            f"spaCy model '{model_name}' is not installed. "
-            f"Run: python -m spacy download {model_name}"
-        ) from exc
+    except OSError:  # pragma: no cover - depends on local install
+        nlp = spacy.blank("en")
+        nlp.add_pipe("sentencizer")
+        return nlp
 
 
 class CooccurrenceRelationExtractor:
