@@ -1,49 +1,14 @@
-import json
-import pandas as pd
+"""Create local silver-standard retrieval queries without title/abstract leakage."""
 
-df = pd.read_csv(
-    "data/processed/processed_documents.csv",
-    dtype={"doc_id": "string"},
-)
+from pathlib import Path
 
-available_columns = set(df.columns)
+from src.pipeline.run_pipeline import create_local_relevance_queries
 
-text_column = "text"
 
-if text_column not in available_columns:
-    if "abstract" in available_columns:
-        text_column = "abstract"
-    else:
-        text_column = None
-
-queries = []
-
-for i, row in df.head(5).iterrows():
-
-    if "title" in available_columns:
-        query_text = str(row["title"])
-    elif text_column:
-        query_text = str(row[text_column])[:80]
-    else:
-        query_text = f"document {i+1}"
-
-    queries.append(
-        {
-            "query_id": f"q{i+1}",
-            "query": query_text,
-            "relevant_doc_ids": [str(row["doc_id"])],
-        }
+if __name__ == "__main__":
+    output = create_local_relevance_queries(
+        processed_documents_path=Path("data/processed/processed_documents.csv"),
+        output_path=Path("data/evaluation/local_retrieval_queries.json"),
+        num_queries=10,
     )
-
-output_path = "data/evaluation/local_retrieval_queries.json"
-
-with open(output_path, "w", encoding="utf-8") as file:
-    json.dump(
-        queries,
-        file,
-        indent=2,
-        ensure_ascii=False,
-    )
-
-print(f"Created: {output_path}")
-print(json.dumps(queries, indent=2, ensure_ascii=False))
+    print(f"Created: {output}")

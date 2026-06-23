@@ -1,40 +1,24 @@
 """
 entity_extraction.py — Named Entity Recognition for scientific documents.
 
-Wraps a spaCy NER pipeline and exposes a small, typed interface that returns
-structured entities from raw text. Beyond spaCy's standard entity types, the
-extractor optionally augments results with lightweight, rule-based detection
-of scientific concepts (capitalised method/dataset names) that generic NER
-models tend to miss.
-
-Entities are the building blocks of the knowledge graph: each unique entity
-becomes a node, and relations between entities become edges.
+The extractor uses spaCy when the configured model is available. If the model is
+missing, it emits a clear warning and falls back to a lightweight rule-based
+scientific term extractor instead of silently returning no entities.
 """
 
 from __future__ import annotations
 
+import re
+import warnings
 from collections import Counter
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 
 @dataclass(frozen=True)
 class Entity:
-    """
-    A single extracted entity.
-
-    Attributes
-    ----------
-    text : str
-        Surface form of the entity as it appears in the document.
-    label : str
-        Entity type (e.g. "ORG", "PERSON", "CONCEPT").
-    start : int
-        Character offset where the entity begins.
-    end : int
-        Character offset where the entity ends.
-    """
+    """A single extracted entity."""
 
     text: str
     label: str
@@ -42,30 +26,61 @@ class Entity:
     end: int
 
 
+_SCIENTIFIC_PATTERNS = [
+    r"\b[A-Z][A-Za-z0-9]+(?:[- ][A-Z]?[A-Za-z0-9]+){0,4}\b",
+    r"\b(?:[A-Z]{2,}[A-Za-z0-9-]*)\b",
+    r"\b(?:graph neural networks?|knowledge graphs?|language models?|semantic retrieval|topic modeling|named entity recognition|relation extraction|retrieval augmented generation|transformer models?|citation networks?)\b",
+]
+
+
 @lru_cache(maxsize=2)
 def _load_spacy(model_name: str):
-    """Load and cache a spaCy model with its NER component enabled."""
+    """Load and cache a spaCy model, falling back with an explicit warning."""
     import spacy
 
     try:
-        return spacy.load(model_name)
+        nlp = spacy.load(model_name)
+        nlp.meta["project_fallback"] = False
+        return nlp
     except OSError:  # pragma: no cover - depends on local install
+        warnings.warn(
+            f"spaCy model '{model_name}' is not installed. Falling back to a blank "
+            "English pipeline plus rule-based scientific entity extraction. "
+            f"Install it with: python -m spacy download {model_name}",
+            RuntimeWarning,
+            stacklevel=2,
+        )
         nlp = spacy.blank("en")
         nlp.add_pipe("sentencizer")
+        nlp.meta["project_fallback"] = True
         return nlp
 
 
-class EntityExtractor:
-    """
-    Extract named entities from text using spaCy.
+def _rule_based_entities(text: str, entity_types: Optional[set[str]] = None) -> List[Entity]:
+    """Extract useful fallback entities from scientific text without spaCy NER."""
+    if entity_types is not None and "CONCEPT" not in entity_types:
+        return []
 
-    Parameters
-    ----------
-    spacy_model : str
-        Name of the spaCy model to load.
-    entity_types : list of str, optional
-        Keep only entities of these spaCy labels. If None, all labels are kept.
-    """
+    seen: set[str] = set()
+    entities: list[Entity] = []
+
+    for pattern in _SCIENTIFIC_PATTERNS:
+        for match in re.finditer(pattern, text, flags=re.IGNORECASE):
+            surface = re.sub(r"\s+", " ", match.group(0)).strip(" .,:;()[]{}")
+            if len(surface) < 3:
+                continue
+            if surface.lower() in {"the", "and", "with", "this", "that", "using"}:
+                continue
+            key = surface.lower()
+            if key not in seen:
+                seen.add(key)
+                entities.append(Entity(surface, "CONCEPT", match.start(), match.end()))
+
+    return entities
+
+
+class EntityExtractor:
+    """Extract named entities from text using spaCy with a rule-based fallback."""
 
     def __init__(
         self,
@@ -75,98 +90,62 @@ class EntityExtractor:
         self.spacy_model = spacy_model
         self.entity_types = set(entity_types) if entity_types else None
         self._nlp = _load_spacy(spacy_model)
+        self.uses_fallback = bool(self._nlp.meta.get("project_fallback", False))
+        self.has_ner = "ner" in self._nlp.pipe_names
 
-    def extract(self, text: str) -> List[Entity]:
-        """
-        Extract entities from a single document.
+        if not self.has_ner:
+            warnings.warn(
+                "The active spaCy pipeline has no NER component. Entity extraction "
+                "will use the project's rule-based scientific fallback.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
 
-        Parameters
-        ----------
-        text : str
-            Input document text.
 
-        Returns
-        -------
-        list of Entity
-            Deduplicated entities (by surface form + label).
-        """
-        if not text or not text.strip():
-            return []
-
-        doc = self._nlp(text)
+    def _entities_from_doc(self, doc) -> List[Entity]:
         seen = set()
         entities: List[Entity] = []
-
-        for ent in doc.ents:
+        for ent in getattr(doc, "ents", []):
             if self.entity_types is not None and ent.label_ not in self.entity_types:
                 continue
             surface = ent.text.strip()
             key = (surface.lower(), ent.label_)
             if surface and key not in seen:
                 seen.add(key)
-                entities.append(
-                    Entity(text=surface, label=ent.label_, start=ent.start_char, end=ent.end_char)
-                )
+                entities.append(Entity(text=surface, label=ent.label_, start=ent.start_char, end=ent.end_char))
+        return entities
+
+    def extract(self, text: str) -> List[Entity]:
+        if not text or not text.strip():
+            return []
+
+        try:
+            doc = self._nlp(text)
+            entities = self._entities_from_doc(doc)
+        except Exception:
+            entities = []
+
+        if not entities:
+            entities = _rule_based_entities(text, self.entity_types)
 
         return entities
 
     def extract_batch(self, texts: List[str], batch_size: int = 64) -> List[List[Entity]]:
-        """
-        Extract entities from many documents efficiently using nlp.pipe.
-
-        Parameters
-        ----------
-        texts : list of str
-            Documents to process.
-        batch_size : int
-            Number of documents processed per spaCy batch.
-
-        Returns
-        -------
-        list of list of Entity
-            One entity list per input document.
-        """
         results: List[List[Entity]] = []
-        for doc in self._nlp.pipe(texts, batch_size=batch_size):
-            seen = set()
-            doc_entities: List[Entity] = []
-            for ent in doc.ents:
-                if self.entity_types is not None and ent.label_ not in self.entity_types:
-                    continue
-                surface = ent.text.strip()
-                key = (surface.lower(), ent.label_)
-                if surface and key not in seen:
-                    seen.add(key)
-                    doc_entities.append(
-                        Entity(
-                            text=surface,
-                            label=ent.label_,
-                            start=ent.start_char,
-                            end=ent.end_char,
-                        )
-                    )
+        try:
+            docs = self._nlp.pipe(texts, batch_size=batch_size)
+        except Exception:
+            return [self.extract(str(text)) for text in texts]
+
+        for text, doc in zip(texts, docs):
+            doc_entities = self._entities_from_doc(doc)
+            if not doc_entities:
+                doc_entities = _rule_based_entities(str(text), self.entity_types)
             results.append(doc_entities)
         return results
 
     @staticmethod
-    def most_common_entities(
-        entities_per_doc: List[List[Entity]], top_n: int = 20
-    ) -> List[tuple]:
-        """
-        Aggregate entities across a corpus and return the most frequent ones.
-
-        Parameters
-        ----------
-        entities_per_doc : list of list of Entity
-            Output of :meth:`extract_batch`.
-        top_n : int
-            Number of entities to return.
-
-        Returns
-        -------
-        list of ((surface, label), count) tuples
-            Sorted by descending frequency.
-        """
+    def most_common_entities(entities_per_doc: List[List[Entity]], top_n: int = 20) -> List[tuple]:
         counter: Counter = Counter()
         for doc_entities in entities_per_doc:
             for entity in doc_entities:

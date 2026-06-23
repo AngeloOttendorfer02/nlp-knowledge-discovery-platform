@@ -54,12 +54,21 @@ class Relation:
 def _load_spacy(model_name: str):
     """Load and cache a spaCy model with parser + NER for relation extraction."""
     import spacy
+    import warnings
 
     try:
-        return spacy.load(model_name)
+        nlp = spacy.load(model_name)
+        nlp.meta["project_fallback"] = False
+        return nlp
     except OSError:  # pragma: no cover - depends on local install
+        warnings.warn(
+            f"spaCy model '{model_name}' is not installed. Falling back to a blank English pipeline for sentence-based co-occurrence relations. Install it with: python -m spacy download {model_name}",
+            RuntimeWarning,
+            stacklevel=2,
+        )
         nlp = spacy.blank("en")
         nlp.add_pipe("sentencizer")
+        nlp.meta["project_fallback"] = True
         return nlp
 
 
@@ -145,6 +154,14 @@ class DependencyRelationExtractor:
 
     def __init__(self, spacy_model: str = "en_core_web_sm") -> None:
         self._nlp = _load_spacy(spacy_model)
+        if "parser" not in self._nlp.pipe_names:
+            import warnings
+
+            warnings.warn(
+                "The active spaCy pipeline has no dependency parser. DependencyRelationExtractor will return no SVO relations; co-occurrence relations remain available.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
 
     def extract(self, text: str) -> List[Relation]:
         """
@@ -161,6 +178,9 @@ class DependencyRelationExtractor:
             One relation per subject–verb–object triple found.
         """
         if not text or not text.strip():
+            return []
+
+        if "parser" not in self._nlp.pipe_names:
             return []
 
         doc = self._nlp(text)

@@ -80,12 +80,24 @@ def train_gcn(
 
     x = torch.tensor(features_np, dtype=torch.float32)
     adjacency = torch.tensor(adjacency_np, dtype=torch.float32)
+    valid_mask_np = labels_np >= 0
+    if not np.any(valid_mask_np):
+        raise ValueError(
+            "At least one node must have a non-negative label. Use -1 only for unlabeled nodes."
+        )
+
+    valid_labels = labels_np[valid_mask_np]
+    output_dim = int(valid_labels.max()) + 1
+    if output_dim <= 0:
+        raise ValueError("Labels must contain at least one class >= 0.")
+
     y = torch.tensor(labels_np, dtype=torch.long)
+    valid_mask = torch.tensor(valid_mask_np, dtype=torch.bool)
 
     model = SimpleGCN(
         input_dim=features_np.shape[1],
         hidden_dim=hidden_dim,
-        output_dim=int(labels_np.max()) + 1,
+        output_dim=output_dim,
     )
 
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
@@ -97,7 +109,9 @@ def train_gcn(
     for _ in range(epochs):
         optimizer.zero_grad()
         logits = model(x, adjacency)
-        loss = criterion(logits, y)
+        # Nodes labelled -1 are intentionally treated as unlabeled and are
+        # excluded from the supervised loss to avoid "Target -1" crashes.
+        loss = criterion(logits[valid_mask], y[valid_mask])
         loss.backward()
         optimizer.step()
         losses.append(float(loss.item()))
@@ -107,7 +121,7 @@ def train_gcn(
         logits = model(x, adjacency)
         predictions = torch.argmax(logits, dim=1).cpu().numpy()
 
-    accuracy = float(np.mean(predictions == labels_np))
+    accuracy = float(np.mean(predictions[valid_mask_np] == labels_np[valid_mask_np]))
 
     return GCNTrainingResult(
         model=model,
