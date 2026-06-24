@@ -217,84 +217,94 @@ def save_json(data: Any, path: Path) -> None:
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
+def _simple_query_terms(text: str, max_terms: int = 4) -> list[str]:
+    """Return compact content terms without copying title or abstract spans."""
+    import re
+
+    stopwords = {
+        "about", "after", "also", "analysis", "and", "are", "based", "been",
+        "between", "can", "data", "document", "documents", "for", "from", "has",
+        "have", "into", "method", "methods", "model", "models", "paper", "papers",
+        "present", "propose", "research", "results", "show", "such", "that", "the",
+        "their", "these", "this", "using", "with", "within", "which", "will",
+    }
+    tokens = [token.lower() for token in re.findall(r"[A-Za-z][A-Za-z-]{3,}", text)]
+    counts: dict[str, int] = {}
+    for token in tokens:
+        token = token.strip("-")
+        if token in stopwords or len(token) < 4:
+            continue
+        counts[token] = counts.get(token, 0) + 1
+    ranked = sorted(counts, key=lambda term: (-counts[term], term))
+    return ranked[:max_terms]
+
+
 def create_local_relevance_queries(
     processed_documents_path: Path,
     output_path: Path,
     num_queries: int = 10,
 ) -> Path:
-    """Create a reproducible local silver-standard relevance file.
+    """Create reproducible local retrieval queries without title/abstract leakage.
 
-    The generated queries are derived from each selected document's own title and
-    abstract. This makes the file useful as a reproducibility benchmark while
-    still using real corpus IDs.
-
-    For the final report, this can later be replaced by a manually curated
-    relevance file.
+    The previous smoke-test query file copied each target paper's title plus the
+    beginning of its abstract. That is useful for a pipeline smoke test, but it
+    can inflate retrieval metrics. This generator instead creates compact topic
+    style queries from categories and high-frequency content terms. The relevant
+    document ID is still silver-standard and local, but the query no longer
+    contains the exact title or abstract passage of the target paper.
     """
     if not processed_documents_path.exists():
-        raise FileNotFoundError(
-            f"Processed documents not found: {processed_documents_path}"
-        )
+        raise FileNotFoundError(f"Processed documents not found: {processed_documents_path}")
 
-    df = pd.read_csv(
-        processed_documents_path,
-        dtype={"doc_id": "string"},
-    )
-
-    required_columns = {"doc_id", "title", "abstract", "text"}
+    df = pd.read_csv(processed_documents_path, dtype={"doc_id": "string"})
+    required_columns = {"doc_id", "text"}
     missing = required_columns.difference(df.columns)
-
     if missing:
-        raise ValueError(
-            f"processed_documents.csv is missing required columns: {missing}"
-        )
+        raise ValueError(f"processed_documents.csv is missing required columns: {missing}")
 
     df = df.copy()
     df["doc_id"] = df["doc_id"].fillna("").astype(str).str.strip()
-    df["title"] = df["title"].fillna("").astype(str).str.strip()
-    df["abstract"] = df["abstract"].fillna("").astype(str).str.strip()
     df["text"] = df["text"].fillna("").astype(str).str.strip()
+    if "categories" not in df.columns:
+        df["categories"] = ""
+    df["categories"] = df["categories"].fillna("").astype(str).str.strip()
 
-    candidates = df[
-        (df["doc_id"] != "")
-        & (df["title"].str.len() >= 20)
-        & (df["abstract"].str.len() >= 100)
-    ].copy()
-
+    candidates = df[(df["doc_id"] != "") & (df["text"].str.len() >= 80)].copy()
     if candidates.empty:
-        raise ValueError(
-            "Could not create local relevance queries because no suitable "
-            "documents with title and abstract were found."
-        )
+        raise ValueError("Could not create local relevance queries because no suitable documents were found.")
 
     candidates = candidates.head(num_queries)
-
     queries = []
 
     for index, (_, row) in enumerate(candidates.iterrows(), start=1):
-        abstract_terms = " ".join(row["abstract"].split()[:25])
-        query_text = f"{row['title']} {abstract_terms}".strip()
+        terms = _simple_query_terms(row["text"], max_terms=4)
+        import re
+
+        raw_categories = str(row["categories"])
+        category_terms = []
+        for category in re.findall(r"[A-Za-z]{2}(?:\.[A-Za-z]{2})?", raw_categories):
+            category_terms.extend(category.replace(".", " ").split())
+        category_terms = category_terms[:2]
+
+        query_parts = ["scientific papers about", *terms]
+        if category_terms:
+            query_parts.extend(["in", *category_terms])
+        query_text = " ".join(query_parts).strip()
 
         queries.append(
             {
                 "query_id": f"q{index}",
                 "query": query_text,
                 "relevant_doc_ids": [row["doc_id"]],
+                "notes": "Local silver query generated without copying the target title or abstract passage.",
             }
         )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-
     with output_path.open("w", encoding="utf-8") as file:
-        json.dump(
-            queries,
-            file,
-            indent=2,
-            ensure_ascii=False,
-        )
+        json.dump(queries, file, indent=2, ensure_ascii=False)
 
     print(f"Saved local relevance queries to {output_path}")
-
     return output_path
     
 
