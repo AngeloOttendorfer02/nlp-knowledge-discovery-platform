@@ -1,126 +1,211 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, Mapping
 
 
-def render_graph_filter(st, graph_path: str = "data/graphs/knowledge_graph.graphml") -> None:
-    """Advanced graph filter UI: filter by node degree, label substring, and node type.
+def _get_node_type(attributes: Mapping[str, Any]) -> str:
+    """Return the canonical graph node type with backward compatibility.
 
-    Renders filtered subgraph using pyvis embedding.
+    KnowledgeGraphBuilder stores the type in ``node_type``. The fallback to
+    ``type`` keeps the visualization compatible with older exported graphs.
     """
+
+    return str(attributes.get("node_type", attributes.get("type", "")))
+
+
+def render_graph_filter(
+    st,
+    graph_path: str = "data/graphs/knowledge_graph.graphml",
+) -> None:
+    """Render an interactive filtered view of the project knowledge graph.
+
+    Nodes can be filtered by minimum degree, label substring, and canonical
+    node type. The resulting subgraph can be displayed, saved as GraphML, or
+    exported as a CSV node list.
+    """
+
     try:
-        import networkx as nx
-        from pyvis.network import Network
         import tempfile
+        import time
+
+        import networkx as nx
         import streamlit.components.v1 as components
+        from pyvis.network import Network
     except Exception:
-        st.error("Optional packages (networkx, pyvis) are required for graph filter view.")
+        st.error(
+            "Optional packages (networkx and pyvis) are required for the "
+            "graph filter view."
+        )
         return
 
     path = Path(graph_path)
     if not path.exists():
-        st.info("Knowledge graph not found. Run pipeline to build the graph.")
+        st.info("Knowledge graph not found. Run the pipeline to build the graph.")
         return
 
     try:
-        G = nx.read_graphml(str(path))
+        graph = nx.read_graphml(str(path))
     except Exception:
         try:
             import json
 
-            G = nx.node_link_graph(json.loads(path.read_text(encoding="utf-8")))  # type: ignore
+            graph = nx.node_link_graph(
+                json.loads(path.read_text(encoding="utf-8"))
+            )
         except Exception as exc:
             st.error(f"Failed to load graph: {exc}")
             return
 
-    st.write(f"Graph: {G.number_of_nodes()} nodes, {G.number_of_edges()} edges")
+    st.write(
+        f"Graph: {graph.number_of_nodes()} nodes, "
+        f"{graph.number_of_edges()} edges"
+    )
 
-    min_deg = st.slider("Minimum node degree", min_value=0, max_value=50, value=1)
-    label_substr = st.text_input("Filter label contains (substring)", value="")
-    node_type = st.text_input("Node type (e.g., Paper, Author)", value="")
+    min_degree = st.slider(
+        "Minimum node degree",
+        min_value=0,
+        max_value=50,
+        value=1,
+    )
+    label_substring = st.text_input(
+        "Filter label contains (substring)",
+        value="",
+    )
+    node_type_filter = st.text_input(
+        "Node type (for example PAPER, AUTHOR, TOPIC, or CONCEPT)",
+        value="",
+    )
 
-    nodes = list(G.nodes(data=True))
+    def node_matches(node_id: str, attributes: Mapping[str, Any]) -> bool:
+        if graph.degree(node_id) < min_degree:
+            return False
 
-    def node_matches(n):
-        name, attrs = n
-        deg = G.degree(name)
-        if deg < min_deg:
-            return False
-        if label_substr and label_substr.lower() not in str(name).lower() and label_substr.lower() not in str(attrs.get("label", "")).lower():
-            return False
-        if node_type and node_type.lower() not in str(attrs.get("type", "")).lower():
-            return False
+        label = str(attributes.get("label", node_id))
+        if label_substring:
+            normalized_filter = label_substring.casefold()
+            if (
+                normalized_filter not in str(node_id).casefold()
+                and normalized_filter not in label.casefold()
+            ):
+                return False
+
+        if node_type_filter:
+            if node_type_filter.casefold() not in _get_node_type(
+                attributes
+            ).casefold():
+                return False
+
         return True
 
-    filtered_nodes = [n for n in G.nodes() if node_matches((n, G.nodes[n]))]
+    filtered_nodes = [
+        node_id
+        for node_id, attributes in graph.nodes(data=True)
+        if node_matches(node_id, attributes)
+    ]
 
     if not filtered_nodes:
         st.info("No nodes matched the filter criteria.")
         return
 
-    # Sampling and paging controls for large graphs
-    max_display = st.slider("Max nodes to display (sampling)", min_value=50, max_value=2000, value=500, step=50)
-    page_size = st.number_input("Nodes per page", min_value=10, max_value=1000, value=200, step=10)
+    max_display = st.slider(
+        "Max nodes to display (sampling)",
+        min_value=50,
+        max_value=2000,
+        value=500,
+        step=50,
+    )
+    page_size = st.number_input(
+        "Nodes per page",
+        min_value=10,
+        max_value=1000,
+        value=200,
+        step=10,
+    )
     total_pages = max(1, (len(filtered_nodes) + page_size - 1) // page_size)
-    page = st.number_input("Page", min_value=1, max_value=total_pages, value=1)
+    page = st.number_input(
+        "Page",
+        min_value=1,
+        max_value=total_pages,
+        value=1,
+    )
 
-    # Determine nodes to show for this page (and respect max_display)
     start = (page - 1) * page_size
     end = start + page_size
-    nodes_for_page = filtered_nodes[start:end]
-    if len(nodes_for_page) > max_display:
-        nodes_for_page = nodes_for_page[:max_display]
+    nodes_for_page = filtered_nodes[start:end][:max_display]
+    subgraph = graph.subgraph(nodes_for_page).copy()
 
-    H = G.subgraph(nodes_for_page).copy()
+    network = Network(height="600px", width="100%")
+    for node_id, attributes in subgraph.nodes(data=True):
+        label = str(attributes.get("label", node_id))
+        title = attributes.get("title") or label
+        node_type_value = _get_node_type(attributes)
+        tooltip = f"{node_type_value}: {title}" if node_type_value else str(title)
+        network.add_node(
+            node_id,
+            label=label,
+            title=tooltip,
+        )
 
-    net = Network(height="600px", width="100%")
-    for n, attrs in H.nodes(data=True):
-        title = attrs.get("title") or attrs.get("label") or str(n)
-        net.add_node(n, label=str(n), title=str(title))
+    for source, target in subgraph.edges():
+        network.add_edge(source, target)
 
-    for u, v, data in H.edges(data=True):
-        if u in H and v in H:
-            net.add_edge(u, v)
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as temp_file:
+        network.save_graph(temp_file.name)
+        temporary_path = Path(temp_file.name)
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".html") as tmp:
-        net.save_graph(tmp.name)
-        tmp_path = tmp.name
+    try:
+        html = temporary_path.read_text(encoding="utf-8")
+        components.html(html, height=700, scrolling=True)
+    finally:
+        temporary_path.unlink(missing_ok=True)
 
-    html = Path(tmp_path).read_text(encoding="utf-8")
-    components.html(html, height=700, scrolling=True)
-
-    # Export / persist controls
     st.markdown("---")
-    col_a, col_b = st.columns(2)
-
-    import time
-
+    graphml_column, csv_column = st.columns(2)
     timestamp = int(time.time())
 
-    with col_a:
+    with graphml_column:
         if st.button("Save filtered subgraph as GraphML"):
-            out_path = Path("data/graphs") / f"filtered_subgraph_{timestamp}.graphml"
-            out_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path = (
+                Path("data/graphs")
+                / f"filtered_subgraph_{timestamp}.graphml"
+            )
+            output_path.parent.mkdir(parents=True, exist_ok=True)
             try:
-                nx.write_graphml(H, out_path)
-                st.success(f"Saved filtered subgraph to {out_path}")
+                nx.write_graphml(subgraph, output_path)
+                st.success(f"Saved filtered subgraph to {output_path}")
             except Exception as exc:
                 st.error(f"Failed to save subgraph: {exc}")
 
-    with col_b:
+    with csv_column:
         if st.button("Export filtered node list (CSV)"):
-            out_path = Path("data/graphs") / f"filtered_nodes_{timestamp}.csv"
-            out_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path = (
+                Path("data/graphs")
+                / f"filtered_nodes_{timestamp}.csv"
+            )
+            output_path.parent.mkdir(parents=True, exist_ok=True)
             try:
                 import csv
 
-                with out_path.open("w", encoding="utf-8", newline="") as fh:
-                    writer = csv.writer(fh)
+                with output_path.open(
+                    "w",
+                    encoding="utf-8",
+                    newline="",
+                ) as file_handle:
+                    writer = csv.writer(file_handle)
+                    # Keep the historic CSV header "type" for compatibility,
+                    # but export the canonical node_type value.
                     writer.writerow(["node_id", "label", "type", "degree"])
-                    for n in H.nodes():
-                        attrs = H.nodes[n]
-                        writer.writerow([n, attrs.get("label", ""), attrs.get("type", ""), H.degree(n)])
+                    for node_id, attributes in subgraph.nodes(data=True):
+                        writer.writerow(
+                            [
+                                node_id,
+                                attributes.get("label", ""),
+                                _get_node_type(attributes),
+                                subgraph.degree(node_id),
+                            ]
+                        )
 
-                st.success(f"Exported node list to {out_path}")
+                st.success(f"Exported node list to {output_path}")
             except Exception as exc:
                 st.error(f"Failed to export node list: {exc}")
