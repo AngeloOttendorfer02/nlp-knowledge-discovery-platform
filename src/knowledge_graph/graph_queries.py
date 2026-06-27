@@ -164,6 +164,41 @@ class GraphQueryEngine:
         ranked = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)
         return [(node, float(score)) for node, score in ranked[:top_n]]
 
+    def papers_by_degree(self, top_n: int = 10) -> List[Tuple[str, int]]:
+        """Return paper nodes ranked by their degree centrality."""
+        paper_nodes = [
+            node
+            for node, data in self.graph.nodes(data=True)
+            if data.get("node_type") == "PAPER"
+        ]
+        if not paper_nodes:
+            return []
+
+        degree_scores = {node: int(self.graph.degree(node)) for node in paper_nodes}
+        ranked = sorted(degree_scores.items(), key=lambda kv: (-kv[1], kv[0]))
+        return [(node, degree) for node, degree in ranked[:top_n]]
+
+    def paper_concept_statistics(self, top_n: int = 10) -> List[Tuple[str, int, List[str]]]:
+        """List papers with the number of linked concepts and the concept ids."""
+        paper_nodes = [
+            node
+            for node, data in self.graph.nodes(data=True)
+            if data.get("node_type") == "PAPER"
+        ]
+
+        rows: List[Tuple[str, int, List[str]]] = []
+        for node in paper_nodes:
+            concepts = []
+            for target in self.graph.successors(node):
+                for _, data in self.graph[node][target].items():
+                    if data.get("relation") == "MENTIONS":
+                        concepts.append(target)
+                        break
+            rows.append((node, len(concepts), sorted(concepts)))
+
+        rows.sort(key=lambda item: (-item[1], item[0]))
+        return rows[:top_n]
+
     # ------------------------------------------------------------------
     # Subgraph extraction
     # ------------------------------------------------------------------
