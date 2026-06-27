@@ -1,450 +1,266 @@
-# prepare_and_install_dep.txt
-# NLP Knowledge Discovery Platform - Prepare, Install and Smoke-Test
-#
-# Purpose:
-# This file contains the full setup sequence used to prepare the project
-# on Linux with Miniforge/Conda and Python 3.11.
+# NLP Knowledge Discovery Platform
+# Reproducible Setup, Installation, and Validation Guide
 #
 # Recommended platform:
 # - Linux
-# - Python 3.11 via Conda/Miniforge
+# - Conda/Miniforge
+# - Python 3.11
 #
 # Important:
-# Do NOT use Python 3.14 for this project. Several NLP/ML packages may fail.
-# Use Python 3.11.
+# Run all commands from the repository root unless a command explicitly says
+# otherwise. Do not use a personal absolute path. After cloning, enter the
+# repository directory and resolve the root with Git as shown below.
 
 ###############################################################################
-# 0. Go to the project root
+# 1. Clone the repository and enter the project root
 ###############################################################################
 
-cd /media/dorin/Disk/Git/nlp-knowledge-discovery-platform
+# Replace <repository-url> with the Git repository URL.
+git clone <repository-url>
+cd nlp-knowledge-discovery-platform
+
+# Optional verification: this must print the repository root.
+git rev-parse --show-toplevel
 
 
 ###############################################################################
-# 1. Install Miniforge if conda is not available
+# 2. Install Miniforge only if Conda is not available
 ###############################################################################
 
-# Check whether conda exists:
 conda --version
 
 # If the command above fails with "conda: command not found", install Miniforge:
-cd ~
-wget -O Miniforge3.sh https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
+cd "${HOME}"
+wget -O Miniforge3.sh \
+  https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
 bash Miniforge3.sh
 
-# During the installer:
-# - press ENTER to continue
-# - type: yes
-# - accept the default install path, usually: /home/<user>/miniforge3
-# - when asked to initialize the shell, type: yes
-
-# After installation, either close and reopen the terminal, or run:
-source ~/miniforge3/etc/profile.d/conda.sh
-
-# Verify:
+# Reopen the terminal after installation, or initialize Conda in the current
+# shell when Miniforge was installed in the default location:
+source "${HOME}/miniforge3/etc/profile.d/conda.sh"
 conda --version
 
+# Return to the cloned repository before continuing.
+cd /path/to/nlp-knowledge-discovery-platform
+
 
 ###############################################################################
-# 2. Create and activate the project environment with Python 3.11
+# 3. Create and activate the project environment
 ###############################################################################
 
-cd /media/dorin/Disk/Git/nlp-knowledge-discovery-platform
-
-# Optional: remove an old broken environment with the same name.
-# Run this only if you want a clean reinstall:
-conda env remove -n nlp-kg -y
-
-# Create a clean Python 3.11 environment:
 conda create -n nlp-kg python=3.11 -y
-
-# Activate it:
 conda activate nlp-kg
 
-# Verify that Python 3.11 is active:
 python --version
+which python
 
-# Expected output:
-# Python 3.11.x
-
-
-###############################################################################
-# 3. Patch Windows-only packages in requirements.txt
-###############################################################################
-
-# Some generated requirements files may contain Windows-only packages such as
-# pywinpty without platform markers. On Linux this can break the installation.
-# This patch is safe and idempotent: it only adds Windows platform markers.
-
-cd /media/dorin/Disk/Git/nlp-knowledge-discovery-platform
-
-# Check if pywin packages exist:
-grep -n "pywin" requirements.txt || true
-
-# Patch pywin packages so that Linux ignores them:
-python - <<'PY'
-from pathlib import Path
-
-path = Path("requirements.txt")
-lines = path.read_text(encoding="utf-8").splitlines()
-
-fixed = []
-for line in lines:
-    stripped = line.strip()
-
-    if stripped.startswith("pywinpty"):
-        if "sys_platform" not in stripped:
-            fixed.append(f"{stripped}; sys_platform == 'win32'")
-        else:
-            fixed.append(line)
-    elif stripped.startswith("pywin32"):
-        if "sys_platform" not in stripped:
-            fixed.append(f"{stripped}; sys_platform == 'win32'")
-        else:
-            fixed.append(line)
-    elif stripped.startswith("pypiwin32"):
-        if "sys_platform" not in stripped:
-            fixed.append(f"{stripped}; sys_platform == 'win32'")
-        else:
-            fixed.append(line)
-    else:
-        fixed.append(line)
-
-path.write_text("\n".join(fixed) + "\n", encoding="utf-8")
-print("requirements.txt patched for Windows-only pywin packages.")
-PY
-
-# Verify the result:
-grep -n "pywin" requirements.txt || true
-
-# Expected on Linux:
-# pywinpty==...; sys_platform == 'win32'
+# Expected:
+# - Python 3.11.x
+# - the Python executable is inside the nlp-kg Conda environment
 
 
 ###############################################################################
-# 4. Install Python dependencies
+# 4. Install project dependencies
 ###############################################################################
 
-# Make sure the correct environment is active:
-conda activate nlp-kg
-python --version
-
-# Upgrade packaging tools:
 python -m pip install --upgrade pip setuptools wheel
+python -m pip install -r requirements.txt
 
-# Install all project dependencies and write the log to install.log:
-pip install -r requirements.txt 2>&1 | tee install.log
+# Kaggle CLI is used by the full validation script to download the public
+# arXiv metadata dataset when it is not already available locally.
+python -m pip install kaggle
 
-# If installation fails, inspect the last lines:
-tail -n 100 install.log
-
-
-###############################################################################
-# 5. Install the spaCy English model
-###############################################################################
-
-conda activate nlp-kg
+# Install the English spaCy model used by the extraction pipeline.
 python -m spacy download en_core_web_sm
 
-# Optional verification:
-python - <<'PY'
-import spacy
-nlp = spacy.load("en_core_web_sm")
-doc = nlp("Knowledge graphs and semantic retrieval are useful for scientific papers.")
-print([(ent.text, ent.label_) for ent in doc.ents])
-print("spaCy model loaded successfully.")
-PY
-
-
-###############################################################################
-# 6. Create required project directories
-###############################################################################
-
-cd /media/dorin/Disk/Git/nlp-knowledge-discovery-platform
-
-mkdir -p data/raw data/processed data/graphs reports/figures
-
-touch data/raw/.gitkeep
-touch data/processed/.gitkeep
-touch data/graphs/.gitkeep
-touch reports/.gitkeep
-touch reports/figures/.gitkeep
-
-
-###############################################################################
-# 7. Basic syntax check
-###############################################################################
-
-conda activate nlp-kg
-cd /media/dorin/Disk/Git/nlp-knowledge-discovery-platform
-
-python -m compileall src
-
-
-###############################################################################
-# 8. Import smoke test
-###############################################################################
-
-conda activate nlp-kg
-cd /media/dorin/Disk/Git/nlp-knowledge-discovery-platform
-
-python - <<'PY'
-modules = [
-    "src.preprocessing.document_loader",
-    "src.preprocessing.text_cleaning",
-    "src.retrieval.bm25_retriever",
-    "src.retrieval.vector_store",
-    "src.retrieval.embedding_retriever",
-    "src.extraction.entity_extraction",
-    "src.extraction.keyword_extraction",
-    "src.extraction.relation_extraction",
-    "src.knowledge_graph.graph_builder",
-    "src.knowledge_graph.graph_queries",
-    "src.knowledge_graph.graph_visualization",
-    "src.embeddings.sentence_embeddings",
-    "src.embeddings.network_embeddings",
-    "src.topic_modeling.lda_model",
-    "src.topic_modeling.bertopic_model",
-]
-
-for module in modules:
-    __import__(module)
-    print("OK:", module)
-
-print("All imports passed.")
-PY
-
-
-###############################################################################
-# 9. Minimal end-to-end smoke test with tiny local data
-###############################################################################
-
-# This creates a tiny synthetic arXiv-like JSONL file and tests:
-# - document loading
-# - text cleaning
-# - BM25 retrieval
-# - entity extraction
-# - relation extraction
-# - knowledge graph construction
-# - graph export to JSON and GraphML
-
-conda activate nlp-kg
-cd /media/dorin/Disk/Git/nlp-knowledge-discovery-platform
-
-python - <<'PY'
-from pathlib import Path
-import json
-
-from src.preprocessing.document_loader import load_arxiv_jsonl, dataframe_to_documents
-from src.preprocessing.text_cleaning import clean_text, chunk_text
-from src.retrieval.bm25_retriever import BM25Retriever
-from src.extraction.entity_extraction import EntityExtractor
-from src.extraction.relation_extraction import CooccurrenceRelationExtractor
-from src.knowledge_graph.graph_builder import KnowledgeGraphBuilder
-
-Path("data/raw").mkdir(parents=True, exist_ok=True)
-Path("data/graphs").mkdir(parents=True, exist_ok=True)
-
-sample_path = Path("data/raw/tiny_arxiv.jsonl")
-
-records = [
-    {
-        "id": "001",
-        "title": "Graph Neural Networks for Scientific Document Retrieval",
-        "abstract": "We study graph neural networks and semantic retrieval for scientific papers.",
-        "authors": "Alice Smith, Bob Miller",
-        "categories": "cs.AI cs.IR",
-        "update_date": "2026-01-01",
-    },
-    {
-        "id": "002",
-        "title": "Transformer Models for Information Extraction",
-        "abstract": "BERT and transformer models are used for named entity recognition and relation extraction.",
-        "authors": "Carol Jones",
-        "categories": "cs.CL",
-        "update_date": "2026-01-02",
-    },
-    {
-        "id": "003",
-        "title": "Medical Image Segmentation",
-        "abstract": "This paper studies convolutional neural networks for image segmentation.",
-        "authors": "David Brown",
-        "categories": "cs.CV",
-        "update_date": "2026-01-03",
-    },
-]
-
-with sample_path.open("w", encoding="utf-8") as f:
-    for record in records:
-        f.write(json.dumps(record) + "\n")
-
-df = load_arxiv_jsonl(
-    str(sample_path),
-    categories=["cs.AI", "cs.CL", "cs.IR"],
-    sample_size=None,
-)
-
-print("Loaded documents:")
-print(df[["doc_id", "title", "categories"]])
-
-documents = dataframe_to_documents(df)
-texts = [doc.text for doc in documents]
-doc_ids = [doc.doc_id for doc in documents]
-
-print("\nClean text example:")
-print(clean_text(texts[0]))
-
-print("\nChunk example:")
-print(chunk_text(["a", "b", "c", "d", "e"], chunk_size=2))
-
-retriever = BM25Retriever(tokenizer=lambda text: text.lower().split())
-retriever.index(doc_ids, texts)
-
-results = retriever.search("transformer information extraction", top_k=2)
-
-print("\nBM25 results:")
-for result in results:
-    print(result.rank, result.doc_id, round(result.score, 4), result.text[:80])
-
-entity_extractor = EntityExtractor(entity_types=["ORG", "PERSON", "GPE", "PRODUCT", "WORK_OF_ART"])
-entities_per_doc = entity_extractor.extract_batch(texts)
-
-print("\nEntities:")
-for doc_id, entities in zip(doc_ids, entities_per_doc):
-    print(doc_id, [(e.text, e.label) for e in entities])
-
-relation_extractor = CooccurrenceRelationExtractor()
-kg = KnowledgeGraphBuilder()
-
-for doc, entities in zip(documents, entities_per_doc):
-    kg.add_paper(
-        doc_id=doc.doc_id,
-        title=doc.title,
-        authors=doc.authors,
-        categories=doc.categories,
-    )
-    kg.add_entities(doc.doc_id, entities)
-    kg.add_relations(relation_extractor.extract(doc.text, entities))
-
-print("\nKG stats:")
-print(kg.stats())
-
-kg.save_json("data/graphs/tiny_graph.json")
-kg.save_graphml("data/graphs/tiny_graph.graphml")
-
-print("\nEnd-to-end smoke test passed.")
-PY
-
-
-###############################################################################
-# 10. Optional semantic retrieval smoke test
-###############################################################################
-
-# This test may download a Sentence Transformers model the first time it runs.
-# It verifies that embedding-based retrieval works.
-
-conda activate nlp-kg
-cd /media/dorin/Disk/Git/nlp-knowledge-discovery-platform
-
-python - <<'PY'
-from src.retrieval.embedding_retriever import EmbeddingRetriever
-
-doc_ids = ["001", "002", "003"]
-texts = [
-    "Graph neural networks for scientific document retrieval.",
-    "Transformer models for named entity recognition and relation extraction.",
-    "Medical image segmentation using convolutional networks.",
-]
-
-retriever = EmbeddingRetriever(model_name="all-MiniLM-L6-v2")
-retriever.index(doc_ids, texts)
-
-results = retriever.search("semantic search for scientific papers", top_k=2)
-
-for r in results:
-    print(r.rank, r.doc_id, round(r.score, 4), r.text)
-
-print("Embedding retrieval smoke test passed.")
-PY
-
-
-###############################################################################
-# 11. Optional dependency consistency check
-###############################################################################
-
-conda activate nlp-kg
-cd /media/dorin/Disk/Git/nlp-knowledge-discovery-platform
-
+# Verify the installed dependency set.
 python -m pip check
 
 
 ###############################################################################
-# 12. Optional Jupyter kernel registration
+# 5. Optional Jupyter kernel registration
 ###############################################################################
 
-# Use this if notebooks are used and you want the environment visible in Jupyter.
+# Register the environment so it can be selected in JupyterLab or Notebook.
+python -m ipykernel install \
+  --user \
+  --name nlp-kg \
+  --display-name "Python (nlp-kg)"
 
+
+###############################################################################
+# 6. Recommended one-command end-to-end validation
+###############################################################################
+
+chmod +x scripts/run_full_validation.sh
+
+# Complete validation including the Streamlit dashboard:
+./scripts/run_full_validation.sh
+
+# Complete validation without starting the dashboard:
+./scripts/run_full_validation.sh --no-dashboard
+
+# Reuse an already prepared environment and skip package installation:
+./scripts/run_full_validation.sh --skip-install --no-dashboard
+
+# Show all available options:
+./scripts/run_full_validation.sh --help
+
+# The script performs the complete reproducible workflow:
+# - validates the active Conda environment and Python interpreter;
+# - installs or validates dependencies;
+# - validates the spaCy model;
+# - runs compileall and pytest;
+# - downloads the public Cornell arXiv metadata dataset when it is missing;
+# - creates a reproducible real-world subset;
+# - runs preprocessing, extraction, topic modeling, and graph construction;
+# - evaluates BM25, semantic, and KG-enhanced retrieval;
+# - generates report tables and figures from real metrics;
+# - runs the manually labelled qualitative retrieval case study;
+# - writes terminal output to logs/e2e/;
+# - optionally starts the Streamlit dashboard.
+
+# Notes about the dataset download:
+# - the full metadata file is approximately 5 GB;
+# - the public dataset normally downloads without an API token;
+# - Kaggle may still request authentication in some environments or after
+#   service-side policy or rate-limit changes;
+# - the file is not downloaded again when it already exists at:
+#   data/raw/arxiv-metadata-oai-snapshot.json
+
+
+###############################################################################
+# 7. Manual validation commands
+###############################################################################
+
+# Static compilation:
+python -m compileall -q src tests scripts run_all.py create_queries.py
+
+# Automated tests:
+python -m pytest -q
+
+# Current verified project status at the time of this guide:
+# 60 tests passed.
+
+# Run the project workflow directly on an existing input dataset:
+python run_all.py \
+  --input data/raw/arxiv_real_500.csv \
+  --full \
+  --skip-embeddings \
+  --num-auto-queries 10
+
+# Launch the dashboard directly:
+python -m streamlit run src/visualization/dashboard.py
+
+
+###############################################################################
+# 8. Run the three retrieval experiments directly
+###############################################################################
+
+python -m src.experiments.run_bm25_baseline \
+  --documents data/processed/processed_documents.csv \
+  --queries data/evaluation/local_retrieval_queries.json \
+  --output-dir reports/tables \
+  --top-k 5 10
+
+python -m src.experiments.run_semantic_retrieval \
+  --documents data/processed/processed_documents.csv \
+  --queries data/evaluation/local_retrieval_queries.json \
+  --output-dir reports/tables \
+  --top-k 5 10
+
+python -m src.experiments.run_kg_enhanced_retrieval \
+  --documents data/processed/processed_documents.csv \
+  --queries data/evaluation/local_retrieval_queries.json \
+  --graph data/graphs/knowledge_graph.graphml \
+  --keywords data/processed/keywords.csv \
+  --output-dir reports/tables \
+  --base-method semantic \
+  --top-k 5 10
+
+
+###############################################################################
+# 9. Generate report assets from real experiment metrics
+###############################################################################
+
+python -m src.experiments.generate_report_assets \
+  --processed-documents data/processed/processed_documents.csv \
+  --entities data/processed/entities.csv \
+  --keywords data/processed/keywords.csv \
+  --relations data/processed/relations.csv \
+  --graph data/graphs/knowledge_graph.json \
+  --output-dir reports \
+  --retrieval-metrics-path reports/tables/bm25_metrics.csv \
+  --retrieval-metrics-path reports/tables/semantic_metrics.csv \
+  --retrieval-metrics-path reports/tables/kg_enhanced_metrics.csv
+
+# The generator intentionally requires real metrics. It does not create report
+# figures from hardcoded fallback values.
+
+
+###############################################################################
+# 10. Execute Notebook 07 after experiment outputs exist
+###############################################################################
+
+jupyter lab
+
+# Open:
+# notebooks/07_retrieval_evaluation_and_benchmarking.ipynb
+#
+# Select the "Python (nlp-kg)" kernel and run all cells. The notebook reads the
+# generated CSV files, compares all retrieval methods, performs query-level
+# ranking analysis, and includes the manual qualitative case study when the
+# files under reports/manual_test/ are available.
+
+
+###############################################################################
+# 11. Logs and generated outputs
+###############################################################################
+
+# Full validation logs:
+ls -lh logs/e2e/
+
+# Latest validation log:
+cat logs/e2e/latest.log
+
+# Main generated artifacts:
+find data/processed data/graphs reports -maxdepth 2 -type f | sort
+
+# Generated datasets, models, reports, images, and logs are intentionally
+# ignored by Git. Only source code, notebooks, tests, and small fixtures should
+# be committed.
+
+
+###############################################################################
+# 12. Troubleshooting
+###############################################################################
+
+# Problem: the Python interpreter is outside the Conda environment.
+# Solution:
 conda activate nlp-kg
-python -m ipykernel install --user --name nlp-kg --display-name "Python (nlp-kg)"
+which python
+python --version
 
-
-###############################################################################
-# 13. Git commands after setup files were added or changed
-###############################################################################
-
-cd /media/dorin/Disk/Git/nlp-knowledge-discovery-platform
-
-git status
-
-# Recommended files to commit if they were newly added or modified:
-git add requirements.txt README.md prepare_and_install_dep.txt \
-        data/raw/.gitkeep data/processed/.gitkeep data/graphs/.gitkeep \
-        reports/.gitkeep reports/figures/.gitkeep
-
-git commit -m "Add reproducible installation and smoke test instructions"
-
-git push
-
-
-###############################################################################
-# 14. Troubleshooting
-###############################################################################
-
-# Problem:
-# pip install fails because of pywinpty on Linux.
-#
+# Problem: sentence_transformers or networkx cannot be imported.
 # Solution:
-# Make sure requirements.txt contains:
-# pywinpty==3.0.3; sys_platform == 'win32'
-#
-# Then recreate the environment and reinstall dependencies.
+conda activate nlp-kg
+python -m pip install -r requirements.txt
 
-# Problem:
-# The environment accidentally uses Python 3.14.
-#
+# Problem: spaCy cannot load en_core_web_sm.
 # Solution:
-# Do not use the system Python. Use:
-# conda activate nlp-kg
-# python --version
-#
-# Expected:
-# Python 3.11.x
+python -m spacy download en_core_web_sm
 
-# Problem:
-# conda command not found.
-#
+# Problem: Kaggle download is rejected.
 # Solution:
-# Run:
-# source ~/miniforge3/etc/profile.d/conda.sh
-#
-# Or close and reopen the terminal after Miniforge installation.
+# The dataset is public and normally downloads anonymously. If Kaggle requests
+# authentication in the current environment, configure the Kaggle CLI according
+# to its current login instructions and rerun the validation script.
 
-# Problem:
-# Installation fails again.
-#
+# Problem: the full validation script stops.
 # Solution:
-# Run:
-# pip install -r requirements.txt 2>&1 | tee install.log
-# tail -n 100 install.log
-#
-# Then inspect the last lines of install.log.
+tail -n 150 logs/e2e/latest.log
+
+# Problem: generated files from an old run affect the result.
+# Solution:
+# The default full validation removes old generated outputs. To preserve old
+# outputs, use --keep-outputs explicitly.
