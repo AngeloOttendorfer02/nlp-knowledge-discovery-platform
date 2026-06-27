@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from pathlib import Path
+import json
 
 import networkx as nx
 import pandas as pd
+import pytest
 
 from src.experiments.generate_report_assets import generate_report_assets
 
@@ -63,6 +65,16 @@ def test_generate_report_assets_creates_tables_and_figures(tmp_path):
     with graph_path.open("w", encoding="utf-8") as handle:
         json.dump(nx.node_link_data(graph), handle)
 
+    metrics = pd.DataFrame(
+        [
+            {"method": "BM25", "precision_at_k": 0.72},
+            {"method": "Semantic", "precision_at_k": 0.68},
+            {"method": "KG-Enhanced", "precision_at_k": 0.75},
+        ]
+    )
+    metrics_path = tmp_path / "bm25_metrics.csv"
+    metrics.to_csv(metrics_path, index=False)
+
     generated = generate_report_assets(
         processed_documents_path=processed_path,
         entities_path=entities_path,
@@ -71,6 +83,7 @@ def test_generate_report_assets_creates_tables_and_figures(tmp_path):
         graph_path=graph_path,
         output_dir=output_dir,
         top_n=3,
+        retrieval_metrics_paths=[metrics_path],
     )
 
     assert generated["dataset_statistics"].exists()
@@ -92,3 +105,51 @@ def test_generate_report_assets_creates_tables_and_figures(tmp_path):
     assert not graph_stats.empty
     assert not topic_summary.empty
     assert graph_stats.iloc[0]["num_nodes"] >= 4
+
+
+def test_generate_report_assets_requires_real_retrieval_metrics(tmp_path):
+    processed_docs = pd.DataFrame(
+        [
+            {
+                "doc_id": "d1",
+                "title": "Graph Neural Networks",
+                "abstract": "Graphs and neural networks are used together.",
+                "categories": "cs.AI cs.LG",
+                "text": "Graph neural networks are useful.",
+            }
+        ]
+    )
+    entities = pd.DataFrame([{"doc_id": "d1", "text": "graph", "label": "ORG"}])
+    keywords = pd.DataFrame([{"doc_id": "d1", "keyword": "graph", "score": 0.9}])
+    relations = pd.DataFrame([{"doc_id": "d1", "source": "graph", "target": "network", "relation": "RELATED_TO"}])
+
+    graph = nx.MultiDiGraph()
+    graph.add_node("paper::d1", node_type="PAPER", label="d1")
+    graph.add_node("concept::graph", node_type="CONCEPT", label="graph")
+    graph.add_edge("paper::d1", "concept::graph", relation="MENTIONS", weight=1)
+
+    processed_path = tmp_path / "processed_documents.csv"
+    entities_path = tmp_path / "entities.csv"
+    keywords_path = tmp_path / "keywords.csv"
+    relations_path = tmp_path / "relations.csv"
+    graph_path = tmp_path / "graph.json"
+    output_dir = tmp_path / "reports"
+
+    processed_docs.to_csv(processed_path, index=False)
+    entities.to_csv(entities_path, index=False)
+    keywords.to_csv(keywords_path, index=False)
+    relations.to_csv(relations_path, index=False)
+    with graph_path.open("w", encoding="utf-8") as handle:
+        json.dump(nx.node_link_data(graph), handle)
+
+    with pytest.raises(ValueError, match="No retrieval metrics paths provided"):
+        generate_report_assets(
+            processed_documents_path=processed_path,
+            entities_path=entities_path,
+            keywords_path=keywords_path,
+            relations_path=relations_path,
+            graph_path=graph_path,
+            output_dir=output_dir,
+            top_n=3,
+            retrieval_metrics_paths=None,
+        )

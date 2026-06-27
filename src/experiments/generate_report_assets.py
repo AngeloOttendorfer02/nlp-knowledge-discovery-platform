@@ -374,17 +374,28 @@ def _plot_retrieval_metrics_comparison(
 ) -> Path:
     metrics: list[tuple[str, float]] = []
 
-    if retrieval_metrics_paths:
-        for candidate in retrieval_metrics_paths:
-            path = Path(candidate)
-            if path.exists():
-                frame = pd.read_csv(path)
-                if "method" in frame.columns and "precision_at_k" in frame.columns:
-                    for _, row in frame.iterrows():
-                        metrics.append((str(row["method"]), float(row["precision_at_k"])))
+    if not retrieval_metrics_paths:
+        raise ValueError(
+            "No retrieval metrics paths provided. "
+            "Provide one or more --retrieval-metrics-path files containing real experiment results."
+        )
+
+    for candidate in retrieval_metrics_paths:
+        path = Path(candidate)
+        if not path.exists():
+            raise FileNotFoundError(f"Retrieval metrics file not found: {path}")
+
+        frame = pd.read_csv(path)
+        if "method" not in frame.columns or "precision_at_k" not in frame.columns:
+            raise ValueError(
+                f"Retrieval metrics file {path} must contain 'method' and 'precision_at_k' columns"
+            )
+
+        for _, row in frame.iterrows():
+            metrics.append((str(row["method"]), float(row["precision_at_k"])))
 
     if not metrics:
-        metrics = [("BM25", 0.72), ("Semantic", 0.68), ("KG-Enhanced", 0.75)]
+        raise ValueError("No retrieval metrics were found in the provided files.")
 
     labels = [label for label, _ in metrics]
     values = [value for _, value in metrics]
