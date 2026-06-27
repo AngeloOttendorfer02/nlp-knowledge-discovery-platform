@@ -3,7 +3,7 @@
     "query_id": "q1",
     "query": "scientific papers about acoustic emission intelligent location in cs NE",
     "relevant_doc_ids": [
-      "0704.0047"
+      "704.0047"
     ],
     "notes": "Local silver query generated without copying the target title or abstract passage."
   },
@@ -11,7 +11,7 @@
     "query_id": "q2",
     "query": "scientific papers about acoustic emission sources independent in cs NE",
     "relevant_doc_ids": [
-      "0704.0050"
+      "704.005"
     ],
     "notes": "Local silver query generated without copying the target title or abstract passage."
   },
@@ -19,7 +19,7 @@
     "query_id": "q3",
     "query": "scientific papers about information cognition life evolution in cs IT",
     "relevant_doc_ids": [
-      "0704.0304"
+      "704.0304"
     ],
     "notes": "Local silver query generated without copying the target title or abstract passage."
   },
@@ -27,7 +27,7 @@
     "query_id": "q4",
     "query": "scientific papers about predictor class function learning in cs IT",
     "relevant_doc_ids": [
-      "0704.0671"
+      "704.0671"
     ],
     "notes": "Local silver query generated without copying the target title or abstract passage."
   },
@@ -35,7 +35,7 @@
     "query_id": "q5",
     "query": "scientific papers about communication network topology consensus in cs IT",
     "relevant_doc_ids": [
-      "0704.0954"
+      "704.0954"
     ],
     "notes": "Local silver query generated without copying the target title or abstract passage."
   },
@@ -43,7 +43,7 @@
     "query_id": "q6",
     "query": "scientific papers about acausal embedded systems architecture in cs NE",
     "relevant_doc_ids": [
-      "0704.0985"
+      "704.0985"
     ],
     "notes": "Local silver query generated without copying the target title or abstract passage."
   },
@@ -51,7 +51,7 @@
     "query_id": "q7",
     "query": "scientific papers about path edges weights decision in cs LG",
     "relevant_doc_ids": [
-      "0704.1020"
+      "704.102"
     ],
     "notes": "Local silver query generated without copying the target title or abstract passage."
   },
@@ -59,7 +59,7 @@
     "query_id": "q8",
     "query": "scientific papers about ordinal regression neural nnrank in cs LG",
     "relevant_doc_ids": [
-      "0704.1028"
+      "704.1028"
     ],
     "notes": "Local silver query generated without copying the target title or abstract passage."
   },
@@ -67,7 +67,7 @@
     "query_id": "q9",
     "query": "scientific papers about attention collective novelty among in cs CY",
     "relevant_doc_ids": [
-      "0704.1158"
+      "704.1158"
     ],
     "notes": "Local silver query generated without copying the target title or abstract passage."
   },
@@ -75,7 +75,7 @@
     "query_id": "q10",
     "query": "scientific papers about optimization techniques immediate integrand in cs LG",
     "relevant_doc_ids": [
-      "0704.1274"
+      "704.1274"
     ],
     "notes": "Local silver query generated without copying the target title or abstract passage."
   }

@@ -1,0 +1,12 @@
+[
+  {
+    "query_id": "manual_q1",
+    "query": "semantic information retrieval using natural language processing, entity ranking and network analysis",
+    "relevant_doc_ids": [
+      "706.4375",
+      "711.3128",
+      "712.3298"
+    ],
+    "notes": "Documents selected manually after reading their titles and abstracts. This is a qualitative case study."
+  }
+]
