@@ -304,7 +304,7 @@ def _precision_at_k(retrieved_ids, relevant_ids, k):
     retrieved = list(retrieved_ids)[:k]
     relevant = set(relevant_ids)
 
-    return sum(doc_id in relevant for doc_id in retrieved) / k
+    return sum(doc_id in relevant for doc_id in retrieved) / len(retrieved) if retrieved else 0.0
 
 
 def _recall_at_k(retrieved_ids, relevant_ids, k):

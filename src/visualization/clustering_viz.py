@@ -6,7 +6,7 @@ from pathlib import Path
 def render_clustering(st, embeddings_path: str = "artifacts/semantic_retrieval/document_embeddings.npz") -> None:
     """Render document clustering based on precomputed embeddings (NPZ expected).
 
-    The NPZ should contain either an array named 'embeddings' and optional 'ids',
+    The NPZ should contain either an array named 'embeddings' and optional 'doc_ids',
     or be a single array saved as the first element.
     """
     try:
@@ -32,7 +32,7 @@ def render_clustering(st, embeddings_path: str = "artifacts/semantic_retrieval/d
 
     if "embeddings" in data:
         embeddings = data["embeddings"]
-        ids = data["ids"] if "ids" in data else [str(i) for i in range(len(embeddings))]
+        ids = data["doc_ids"] if "doc_ids" in data else [str(i) for i in range(len(embeddings))]
     else:
         # try to infer
         arrs = [data[k] for k in data.files]
