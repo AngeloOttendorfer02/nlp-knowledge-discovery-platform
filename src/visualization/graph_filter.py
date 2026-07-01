@@ -48,7 +48,7 @@ def render_graph_filter(st, graph_path: str = "data/graphs/knowledge_graph.graph
             return False
         if label_substr and label_substr.lower() not in str(name).lower() and label_substr.lower() not in str(attrs.get("label", "")).lower():
             return False
-        if node_type and node_type.lower() not in str(attrs.get("type", "")).lower():
+        if node_type and node_type.lower() not in str(attrs.get("node_type", "")).lower():
             return False
         return True
 
@@ -116,10 +116,10 @@ def render_graph_filter(st, graph_path: str = "data/graphs/knowledge_graph.graph
 
                 with out_path.open("w", encoding="utf-8", newline="") as fh:
                     writer = csv.writer(fh)
-                    writer.writerow(["node_id", "label", "type", "degree"])
+                    writer.writerow(["node_id", "label", "node_type", "degree"])
                     for n in H.nodes():
                         attrs = H.nodes[n]
-                        writer.writerow([n, attrs.get("label", ""), attrs.get("type", ""), H.degree(n)])
+                        writer.writerow([n, attrs.get("label", ""), attrs.get("node_type", ""), H.degree(n)])
 
                 st.success(f"Exported node list to {out_path}")
             except Exception as exc:

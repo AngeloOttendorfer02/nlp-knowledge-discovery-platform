@@ -98,5 +98,11 @@ def render_topic_embeddings(st, lda_topics_path: str = "data/processed/lda_topic
             if NearestNeighbors is not None:
                 nn = NearestNeighbors(n_neighbors=6, metric="cosine").fit(embeddings)
                 distances, indices = nn.kneighbors([embeddings[i]])
-                neighbors = [word_list[k] for k in indices[0] if k != i]
-                st.write({"neighbors": neighbors, "distances": distances[0].tolist()})
+                neighbor_pairs = [
+                    (word_list[k], float(distance))
+                    for k, distance in zip(indices[0], distances[0])
+                    if k != i
+                ]
+                neighbors = [word for word, _ in neighbor_pairs]
+                neighbor_distances = [distance for _, distance in neighbor_pairs]
+                st.write({"neighbors": neighbors, "distances": neighbor_distances})
